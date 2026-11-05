@@ -1,0 +1,30 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { PASSWORD } from './accounts'
+
+/** The local stack's public URL and publishable key, from .env.local (pnpm env:local). */
+function localEnv(): { url: string; key: string } {
+  const text = readFileSync(resolve(import.meta.dirname, '..', '.env.local'), 'utf8')
+  const value = (name: string) => {
+    const match = new RegExp(`^${name}=(.+)$`, 'm').exec(text)
+    if (!match?.[1]) throw new Error(`.env.local has no ${name}. Run pnpm env:local.`)
+    return match[1].trim()
+  }
+  return { url: value('VITE_SUPABASE_URL'), key: value('VITE_SUPABASE_PUBLISHABLE_KEY') }
+}
+
+/**
+ * A Supabase client signed in as one of the fake local accounts, for checks that go
+ * straight to the API rather than through the app. Uses the publishable key only, so
+ * RLS applies exactly as it does in the browser.
+ */
+export async function signedInClient(email: string): Promise<SupabaseClient> {
+  const { url, key } = localEnv()
+  const client = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD })
+  if (error) throw error
+  return client
+}
