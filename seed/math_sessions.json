@@ -2,6 +2,7 @@
  "tracker": "singapore-math",
  "source": "singapore_math_performance_tracker.xlsx (Daily tracker tab)",
  "page_note": "Printed textbook pages; PDF viewer page = printed + 2",
+ "pdf_offset": 2,
  "sessions": [
   {
    "session": 1,

@@ -201,15 +201,15 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 **Plan**
 - Template from `seed/math_sessions.json`: 80 sessions, Sun/Tue/Thu/Sat, first date 2026-11-01. Three Thursdays are already moved to Wednesday.
-- `details` carries `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind` and `reading_only`.
-- Pages are printed pages. Show "PDF +2" beside them.
+- `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind` and `reading_only`, plus `pdf_offset` on items that have pages.
+- Pages are printed pages. Show the PDF viewer pages beside them (printed + `pdf_offset`): "pp. 31–32 · PDF 33–34".
 
 **Fields**
 - `checklist`: attempted, checked, explained, retry_planned
 - `outcomes` tally: I / H / S / U, with keyboard shortcuts `i h s u`
 - `minutes`
 - `key_idea`
-- `did`, `struggled` (both required)
+- `did`, `struggled` (both required; `did` starts prefilled from the session's assignment)
 - `reflection`, with a prompt rotating by session
 - `notebook` photo (optional)
 
@@ -219,7 +219,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 - minutes per week
 - ideas explained per week
 
-**Followups:** from any H, S or U problem; label like `p. 31 #4`; due in 2 days. Review sessions list everything still open.
+**Followups:** from any H, S or U problem; label like `p. 31 #4`; due in 2 days. Review sessions (`kind` is `review` or `mixed_check`, set by `followups.listAllOpenWhen`) list everything still open.
 
 **Pacing flags** (admin only, never shown to students):
 - "Slow down": in a week, H+S+U > I
@@ -229,7 +229,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 ### `violin` (cadence: daily, `display: inline_on_today_card`)
 
 - `practiced` (yes/no), plus `focus` (short text, required when yes).
-- Metrics: days per week, streak, recent focus items.
+- Metrics: days per week, streak. Recent focus items are a list on Overview (Phase 3), not a metric.
 
 ---
 
@@ -294,7 +294,7 @@ Mark the current phase when it changes.
   - Builds: Today, math log flow, violin inline check-in, followups, offline outbox, backfill for missed dates.
   - *Done when:* the student logs a real session on a laptop in under 2 minutes, unaided.
 - [ ] **3. Admin side + connectors**
-  - Builds: Overview, Struggles, comments, retry queue, plan editor, push, calendar, digest.
+  - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

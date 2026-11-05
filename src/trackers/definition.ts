@@ -35,6 +35,11 @@ export const METRIC_TYPES = [
 
 const key = z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/, 'keys are letters, digits and underscores')
 
+/** `plan.<detail>`: reads a key from the plan item's details (e.g. plan.reading_only). */
+const planRef = z
+  .string()
+  .regex(/^plan\.[a-z][a-z0-9_]*$/, 'plan references look like plan.<detail>')
+
 export const FieldOption = z.strictObject({
   key,
   label: z.string().min(1),
@@ -53,6 +58,8 @@ export const FieldDefinition = z.strictObject({
   showIf: z.record(z.string(), z.union([z.boolean(), z.string(), z.number()])).optional(),
   rotatingPrompts: z.array(z.string().min(1)).optional(),
   rotateBy: z.string().optional(),
+  /** Prefills a new entry from the plan item, e.g. "plan.assignment". The student can edit it. */
+  default: planRef.optional(),
 })
 export type FieldDefinition = z.infer<typeof FieldDefinition>
 
@@ -74,6 +81,13 @@ export const FollowupRules = z.strictObject({
   enabledFrom: z.array(z.string().min(1)),
   labelHint: z.string(),
   defaultDueDays: z.int().min(0),
+  /**
+   * On plan items matching every key (any of the listed values), Today lists every
+   * open followup, not just the ones due. Review sessions use this.
+   */
+  listAllOpenWhen: z
+    .record(planRef, z.array(z.union([z.string(), z.number(), z.boolean()])).min(1))
+    .optional(),
 })
 
 export const TrackerDefinition = z.strictObject({
@@ -123,6 +137,8 @@ export const PlanFile = z.strictObject({
   tracker: z.string(),
   source: z.string().optional(),
   page_note: z.string().optional(),
+  /** PDF viewer page = printed page + pdf_offset. Copied into each item that has pages. */
+  pdf_offset: z.int().optional(),
   sessions: z.array(PlanSession).min(1),
 })
 export type PlanFile = z.infer<typeof PlanFile>

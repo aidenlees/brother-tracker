@@ -57,6 +57,10 @@ function templateItems(plan: PlanFile) {
       page_end: s.page_end,
       kind: s.kind,
       reading_only: s.reading_only,
+      // Students can't read plan_templates, so the offset travels with each item's pages.
+      ...(plan.pdf_offset !== undefined && s.page_start !== null
+        ? { pdf_offset: plan.pdf_offset }
+        : {}),
     },
   }))
 }
