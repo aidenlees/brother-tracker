@@ -287,10 +287,10 @@ No LLM API calls from this app.
 
 Mark the current phase when it changes.
 
-- [ ] **1. Foundation** ← current (branch `phase-1`)
+- [x] **1. Foundation** (done 2026-11-05, PR #1)
   - Builds: scaffold, full schema + helpers + RLS + audit, `assign_tracker`, pgTAP refusal tests, local fake-user seed, password login, role-based nav shell, `pnpm seed`, CI, Pages deploy.
   - *Done when:* every refusal in rule 11 is tested and failing correctly, the student's own write succeeds, and the site is live.
-- [ ] **2. Student MVP**
+- [ ] **2. Student MVP** ← current (branch `phase-2`)
   - Builds: Today, math log flow, violin inline check-in, followups, offline outbox, backfill for missed dates.
   - *Done when:* the student logs a real session on a laptop in under 2 minutes, unaided.
 - [ ] **3. Admin side + connectors**
