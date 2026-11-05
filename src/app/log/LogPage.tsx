@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
-import { isEditable, type EntryView } from '@/lib/outbox/overlay'
+import { isEditable, type EntryView, type FollowupView } from '@/lib/outbox/overlay'
 import { draftKey, getDraft } from '@/lib/outbox/store'
 import type { Draft } from '@/lib/outbox/types'
 import { useStudentData, type Tracker } from '@/lib/student-data'
@@ -36,6 +36,9 @@ export function LogPage() {
           (e) => e.assignment_id === assignment.id && e.plan_item_id === null && e.date === date,
         )
     : undefined
+  const existingRetries = existing
+    ? data.followups.filter((f) => f.entry_id === existing.id && f.status === 'open')
+    : []
   const key = draftKey(outbox.userId, assignmentId, planItemId ?? null, date)
 
   // The draft to work on: the saved one, or a fresh one once the data is here.
@@ -46,12 +49,26 @@ export function LogPage() {
     let current = true
     void getDraft(key).then((saved) => {
       if (!current) return
-      setDraft(saved ?? freshDraft(key, outbox.userId, assignmentId, tracker, plan, date, existing))
+      setDraft(
+        saved ??
+          freshDraft(
+            key,
+            outbox.userId,
+            assignmentId,
+            tracker,
+            plan,
+            date,
+            existing,
+            existingRetries,
+          ),
+      )
     })
     return () => {
       current = false
     }
-  }, [ready, key, draft?.key, outbox.userId, assignmentId, tracker, plan, date, existing])
+    // Only the first draft for this key matters; later data changes don't replace it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, key, draft?.key])
 
   if (data.status === 'loading') {
     return (
@@ -91,7 +108,9 @@ export function LogPage() {
       tracker={tracker}
       plan={plan ?? null}
       existing={existing}
+      existingRetries={existingRetries}
       draft={draft}
+      today={today}
     />
   )
 }
@@ -104,6 +123,7 @@ function freshDraft(
   plan: PlanItem | undefined,
   date: string,
   existing: EntryView | undefined,
+  retries: FollowupView[],
 ): Draft {
   const now = new Date().toISOString()
   const fields = tracker.fields
@@ -124,7 +144,7 @@ function freshDraft(
     editing: existing !== undefined,
     fieldVersion: tracker.field_version,
     data: { ...start, ...kept },
-    followups: [],
+    followups: retries.map(({ id, label, due_date }) => ({ id, label, due_date })),
     step: 0,
     startedAt: now,
     updatedAt: now,

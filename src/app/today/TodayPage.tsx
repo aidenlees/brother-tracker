@@ -13,6 +13,7 @@ import { streak } from '@/trackers/metrics/streak'
 import { logPath } from '../log/paths'
 import { InlineCheckIn } from './InlineCheckIn'
 import { PlanCard } from './PlanCard'
+import { Retries } from './Retries'
 import { SavedNote, TrackerCard } from './TrackerCard'
 
 /** Today answers one question: what do I log today? One card per active assignment. */
@@ -112,6 +113,16 @@ function AssignmentCard({
           today={today}
         />
       )}
+      {tracker.followups ? (
+        <Retries
+          rules={tracker.followups}
+          followups={data.followups.filter((f) => f.assignment_id === assignment.id)}
+          todaysItems={data.planItems.filter(
+            (item) => item.assignment_id === assignment.id && item.date === today,
+          )}
+          today={today}
+        />
+      ) : null}
     </TrackerCard>
   )
 }

@@ -45,6 +45,11 @@ test.describe('@log the math log flow', () => {
     await expect(page.getByText('4 problems')).toBeVisible()
     await page.keyboard.press('Enter')
 
+    // One H: the retry step appears. Enter on its empty line moves on.
+    await expect(step(page)).toContainText('Problems to retry')
+    await expect(progress(page)).toHaveText('3 of 9')
+    await page.keyboard.press('Enter')
+
     await expect(step(page)).toContainText('Minutes')
     await page.keyboard.type('45')
     await page.keyboard.press('Enter')
@@ -68,7 +73,7 @@ test.describe('@log the math log flow', () => {
     await page.keyboard.press('Enter')
 
     await expect(step(page)).toContainText(/Notebook photo/)
-    await expect(progress(page)).toHaveText('8 of 8')
+    await expect(progress(page)).toHaveText('9 of 9')
     await page.keyboard.press('Enter')
 
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
@@ -155,14 +160,20 @@ test.describe('@log the math log flow', () => {
     const session5 = await planItemId(client, 'singapore-math', 5)
     await page.goto(`log/${math}/${session5}`)
     await expect(step(page)).toContainText("Today's checklist")
-    await page.getByRole('button', { name: 'Next' }).click()
-    await page.getByRole('button', { name: 'Next' }).click()
+    while (!(await step(page).innerText()).startsWith('Minutes')) {
+      await page.getByRole('button', { name: 'Next' }).click()
+    }
     // The fixture logged 35 minutes; a re-run finds this test's last value instead.
     const box = page.getByRole('textbox')
     await expect(box).toHaveValue(/^(35|40)$/)
     const minutes = (await box.inputValue()) === '40' ? 35 : 40
     await box.fill(String(minutes))
-    for (let i = 0; i < 6; i += 1) await page.getByRole('button', { name: /Next|Save/ }).click()
+    for (;;) {
+      const button = page.getByRole('button', { name: /^(Next|Save)$/ })
+      const label = await button.innerText()
+      await button.click()
+      if (label.includes('Save')) break
+    }
 
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect

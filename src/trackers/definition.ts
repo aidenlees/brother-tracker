@@ -93,6 +93,7 @@ export const FollowupRules = z.strictObject({
     .record(planRef, z.array(z.union([z.string(), z.number(), z.boolean()])).min(1))
     .optional(),
 })
+export type FollowupRules = z.infer<typeof FollowupRules>
 
 export const TrackerDefinition = z.strictObject({
   slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),

@@ -12,7 +12,7 @@ import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
-import type { EntryView } from '@/lib/outbox/overlay'
+import type { EntryView, FollowupView } from '@/lib/outbox/overlay'
 import { deleteDraft, saveDraft } from '@/lib/outbox/store'
 import type { Draft } from '@/lib/outbox/types'
 import type { Tracker } from '@/lib/student-data'
@@ -24,14 +24,19 @@ import {
   type EntryData,
   type EntryIssue,
 } from '@/trackers/entry'
+import { characters } from '@/trackers/fields/contract'
 import { FIELD_REGISTRY } from '@/trackers/fields/registry'
+import { defaultDue, retryCount, retryFields } from '@/trackers/followups'
 import { pageLabel, sessionLabel, type PlanItem } from '@/trackers/plan'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
+import { withSpareRow, type Retry } from './retries'
+import { RetryStep } from './RetryStep'
 
 /** How long after the last change the draft is written to the device. */
 const AUTOSAVE_MS = 300
 
-type Step = { kind: 'field'; field: FieldDefinition }
+type Step = { kind: 'field'; field: FieldDefinition } | { kind: 'retries' }
+const RETRY_LABEL_MAX = 80
 
 /**
  * The log flow (CLAUDE.md, "Log session"): one field per screen, keyboard first. Enter
@@ -42,12 +47,17 @@ export function LogFlow({
   tracker,
   plan,
   existing,
+  existingRetries,
   draft,
+  today,
 }: {
   tracker: Tracker
   plan: PlanItem | null
   existing: EntryView | undefined
+  /** The edited entry's open retries. */
+  existingRetries: FollowupView[]
   draft: Draft
+  today: string
 }) {
   const outbox = useOutbox()
   const navigate = useNavigate()
@@ -59,10 +69,25 @@ export function LogFlow({
   const [issue, setIssue] = useState<EntryIssue | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const steps: Step[] = useMemo(
-    () => shownFields(tracker.fields, data, details).map((field) => ({ kind: 'field', field })),
-    [tracker.fields, data, details],
-  )
+  const rules = tracker.followups
+  const [due, setDue] = useState(() => (rules ? defaultDue(rules, draft.date, today) : draft.date))
+  const [retries, setRetries] = useState<Retry[]>(() => withSpareRow(draft.followups, due))
+  const kept = retries.filter((r) => r.label.trim() !== '')
+
+  // The fields, with the retry step after the tally when any problem needed help.
+  const steps: Step[] = useMemo(() => {
+    const fields: Step[] = shownFields(tracker.fields, data, details).map((field) => ({
+      kind: 'field',
+      field,
+    }))
+    if (!rules || (retryCount(rules, data) === 0 && kept.length === 0)) return fields
+    const after = fields.findLastIndex(
+      (s) => s.kind === 'field' && retryFields(rules).has(s.field.key),
+    )
+    return after < 0
+      ? fields
+      : [...fields.slice(0, after + 1), { kind: 'retries' }, ...fields.slice(after + 1)]
+  }, [tracker.fields, data, details, rules, kept.length])
   const at = Math.min(index, steps.length - 1)
   const step = steps[at]
   const last = at === steps.length - 1
@@ -73,24 +98,70 @@ export function LogFlow({
     if (finished.current) return
     const timer = window.setTimeout(() => {
       if (finished.current) return
-      void saveDraft({ ...draft, data, step: at, updatedAt: new Date().toISOString() })
+      void saveDraft({
+        ...draft,
+        data,
+        followups: retries.filter((r) => r.label.trim() !== ''),
+        step: at,
+        updatedAt: new Date().toISOString(),
+      })
     }, AUTOSAVE_MS)
     return () => {
       window.clearTimeout(timer)
     }
-  }, [draft, data, at])
+  }, [draft, data, retries, at])
 
-  /** The current field's problem, if any, judged exactly as the database will judge it. */
-  function problemWith(field: FieldDefinition): EntryIssue | null {
+  /** The step's problem, if any, judged exactly as the database will judge it. */
+  function problemWith(current: Step): EntryIssue | null {
+    if (current.kind === 'retries') {
+      const long = kept.find((r) => characters(r.label.trim()) > RETRY_LABEL_MAX)
+      return long
+        ? { key: 'retries', message: `Keep each retry to ${RETRY_LABEL_MAX} characters or fewer` }
+        : null
+    }
     const result = cleanEntry(tracker.fields, data, details)
-    return result.ok ? null : (result.issues.find((i) => i.key === field.key) ?? null)
+    return result.ok ? null : (result.issues.find((i) => i.key === current.field.key) ?? null)
+  }
+
+  /** Queues the retries: new ones, changed ones, and ones removed (dropped). */
+  async function saveRetries(entryId: string) {
+    const before = new Map(existingRetries.map((f) => [f.id, f]))
+    for (const retry of kept) {
+      const label = retry.label.trim()
+      const old = before.get(retry.id)
+      if (!old) {
+        await outbox.enqueue({
+          kind: 'followup.create',
+          row: {
+            id: retry.id,
+            entry_id: entryId,
+            assignment_id: draft.assignmentId,
+            label,
+            due_date: retry.due_date,
+            status: 'open',
+            owner_id: outbox.userId,
+          },
+        })
+      } else if (old.label !== label || old.due_date !== retry.due_date) {
+        await outbox.enqueue({
+          kind: 'followup.update',
+          id: retry.id,
+          patch: { label, due_date: retry.due_date },
+        })
+      }
+    }
+    for (const old of existingRetries) {
+      if (!kept.some((r) => r.id === old.id)) {
+        await outbox.enqueue({ kind: 'followup.update', id: old.id, patch: { status: 'dropped' } })
+      }
+    }
   }
 
   async function save() {
     const result = cleanEntry(tracker.fields, data, details)
     if (!result.ok) {
       const first = result.issues[0]
-      const where = steps.findIndex((s) => s.field.key === first?.key)
+      const where = steps.findIndex((s) => s.kind === 'field' && s.field.key === first?.key)
       if (where >= 0) setIndex(where)
       setIssue(first ?? null)
       return
@@ -117,13 +188,14 @@ export function LogFlow({
         },
       })
     }
+    await saveRetries(existing?.id ?? draft.entryId)
     await deleteDraft(draft.key)
     void navigate('/today', { state: { saved: existing?.id ?? draft.entryId } })
   }
 
   function next() {
     if (!step || saving) return
-    const problem = problemWith(step.field)
+    const problem = problemWith(step)
     if (problem) {
       setIssue(problem)
       return
@@ -163,14 +235,23 @@ export function LogFlow({
   }, [])
 
   if (!step) return null
-  const field = step.field
-  const { Renderer } = FIELD_REGISTRY[field.type]
   const labelId = `${baseId}-label`
   const helpId = `${baseId}-help`
   const problemId = `${baseId}-problem`
-  const help = field.rotatingPrompts ? promptFor(field, details) : field.help
   const session = plan ? sessionLabel(plan.details) : null
   const pages = plan ? pageLabel(plan.details) : null
+  const count = rules ? retryCount(rules, data) : 0
+  const field = step.kind === 'field' ? step.field : null
+  const title = field ? field.label : 'Problems to retry'
+  const optional = field ? !field.required : true
+  const help = field
+    ? field.rotatingPrompts
+      ? promptFor(field, details)
+      : field.help
+    : `${count === 1 ? '1 problem' : `${String(count)} problems`} needed help. Add the ones to redo, one per line, or leave this empty.`
+  const describedBy =
+    [help ? helpId : null, issue ? problemId : null].filter(Boolean).join(' ') || undefined
+  const Renderer = field ? FIELD_REGISTRY[field.type].Renderer : null
 
   return (
     <div
@@ -217,13 +298,13 @@ export function LogFlow({
       <section aria-labelledby={labelId} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <h2 id={labelId} className="text-3xl leading-tight text-foreground">
-            {field.label}
-            {field.required ? null : (
+            {title}
+            {optional ? (
               <>
                 {' '}
                 <span className="ml-1 font-sans text-base text-muted-foreground">optional</span>
               </>
-            )}
+            ) : null}
           </h2>
           {help ? (
             <p id={helpId} className="text-muted-foreground">
@@ -231,24 +312,47 @@ export function LogFlow({
             </p>
           ) : null}
         </div>
-        <Renderer
-          key={field.key}
-          field={field}
-          value={data[field.key] ?? null}
-          onChange={(value) => {
-            setData((d) => ({ ...d, [field.key]: value }))
-            if (issue) setIssue(null)
-          }}
-          labelId={labelId}
-          describedBy={
-            [help ? helpId : null, issue ? problemId : null].filter(Boolean).join(' ') || undefined
-          }
-          invalid={issue !== null}
-          autoFocus
-          hotkeys
-          onSubmit={next}
-          placeholder={field.rotatingPrompts ? '' : undefined}
-        />
+        {field && Renderer ? (
+          <Renderer
+            key={field.key}
+            field={field}
+            value={data[field.key] ?? null}
+            onChange={(value) => {
+              setData((d) => ({ ...d, [field.key]: value }))
+              if (issue) setIssue(null)
+            }}
+            labelId={labelId}
+            describedBy={describedBy}
+            invalid={issue !== null}
+            autoFocus
+            hotkeys
+            onSubmit={next}
+            placeholder={field.rotatingPrompts ? '' : undefined}
+          />
+        ) : rules ? (
+          <RetryStep
+            baseId={baseId}
+            rows={retries}
+            onRows={(rows) => {
+              setRetries(rows)
+              if (issue) setIssue(null)
+            }}
+            due={due}
+            onDue={(nextDue) => {
+              setDue(nextDue)
+              // Retries already saved keep their own dates.
+              setRetries((rows) =>
+                rows.map((r) =>
+                  existingRetries.some((f) => f.id === r.id) ? r : { ...r, due_date: nextDue },
+                ),
+              )
+            }}
+            hint={rules.labelHint}
+            labelId={labelId}
+            describedBy={describedBy}
+            onSubmit={next}
+          />
+        ) : null}
         {issue ? (
           <p id={problemId} role="alert" className="text-destructive">
             {issue.message}
@@ -279,7 +383,7 @@ export function LogFlow({
         {/* Keyboard hints are for laptops; a phone keyboard has its own Next. */}
         <p className="hidden text-sm text-muted-foreground sm:block">
           <kbd className="font-sans">Enter</kbd>
-          {field.type === 'long_text' ? ' · Shift+Enter for a new line' : null}
+          {field?.type === 'long_text' ? ' · Shift+Enter for a new line' : null}
         </p>
       </nav>
     </div>
