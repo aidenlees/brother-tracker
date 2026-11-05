@@ -120,6 +120,22 @@ language sql as $$
   where id = tests.id(p_name)
 $$;
 
+-- Local seed data (supabase/seed.sql, pnpm seed) must not change what the tests count,
+-- so every file starts from empty tables. The file's own transaction rolls this back.
+create function tests.clear_local_data() returns void
+language plpgsql as $$
+begin
+  truncate table
+    public.audit_log, public.push_subscriptions, public.comments, public.attachments,
+    public.followups, public.entries, public.plan_items, public.assignments,
+    public.plan_templates, public.tracker_versions, public.trackers, public.viewer_links,
+    public.profiles;
+  perform set_config('storage.allow_delete_query', 'true', true);
+  delete from storage.objects where bucket_id = 'attachments';
+  perform set_config('storage.allow_delete_query', 'false', true);
+  delete from auth.users;
+end $$;
+
 -- The cast for every test file:
 --   admin; viewer (linked to student); viewer2 (linked to nobody);
 --   student and student2 (each assigned both test trackers); former (inactive student);
@@ -130,6 +146,7 @@ $$;
 create function tests.make_world() returns void
 language plpgsql as $$
 begin
+  perform tests.clear_local_data();
   perform tests.create_user('admin', 'admin');
   perform tests.create_user('viewer', 'viewer');
   perform tests.create_user('viewer2', 'viewer');
