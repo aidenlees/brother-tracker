@@ -17,6 +17,7 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "seed": "node scripts/seed.ts",
+    "e2e:fixtures": "node scripts/e2e-fixtures.ts",
     "env:local": "node scripts/local-env.ts",
     "gen:icons": "pwa-assets-generator",
     "gen:parity": "vitest run src/trackers/parity.test.ts --update",
