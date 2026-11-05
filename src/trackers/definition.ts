@@ -23,6 +23,7 @@ export const FIELD_TYPES = [
   'yes_no',
   'photo',
 ] as const
+export type FieldTypeName = (typeof FIELD_TYPES)[number]
 
 export const METRIC_TYPES = [
   'sum',
@@ -54,6 +55,9 @@ export const FieldDefinition = z.strictObject({
   help: z.string().optional(),
   placeholder: z.string().optional(),
   options: z.array(FieldOption).optional(),
+  /** Bounds for `number` fields, as public.field_check_number reads them. */
+  min: z.number().optional(),
+  max: z.number().optional(),
   /** Show the field only when every key matches. `plan.<detail>` reads the plan item. */
   showIf: z.record(z.string(), z.union([z.boolean(), z.string(), z.number()])).optional(),
   rotatingPrompts: z.array(z.string().min(1)).optional(),

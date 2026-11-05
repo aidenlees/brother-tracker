@@ -36,6 +36,12 @@ export default defineConfig([
     },
   },
   {
+    // One file per field type (CLAUDE.md, "Field types"): each exports its definition,
+    // renderer included. Editing one reloads the page instead of hot-swapping it.
+    files: ['src/trackers/fields/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
+  {
     files: ['scripts/**/*.ts', 'e2e/**/*.ts', '*.config.ts'],
     languageOptions: { globals: globals.node },
   },
