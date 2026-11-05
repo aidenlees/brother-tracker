@@ -1,6 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ACCOUNTS, authFile } from './accounts'
-import { addDays, assignmentId, entriesOn, longDay, planItemId, todayNY } from './data'
+import {
+  addDays,
+  assignmentId,
+  entriesOn,
+  fieldVersion,
+  longDay,
+  planItemId,
+  todayNY,
+} from './data'
 import { localSql, signedInClient } from './supabase'
 
 /**
@@ -113,7 +121,7 @@ test.describe('@backfill late logs and locked entries', () => {
     const { error } = await client.from('entries').insert({
       assignment_id: math,
       plan_item_id: session3,
-      field_version: 2,
+      field_version: await fieldVersion(client, 'singapore-math'),
       date: todayNY(),
       data: { checklist: {}, minutes: 20, did: 'Practice pp. 18-21', struggled: 'none' },
     })

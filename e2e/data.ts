@@ -73,3 +73,15 @@ export function longDay(iso: string): string {
     day: 'numeric',
   }).format(new Date(`${iso}T00:00:00Z`))
 }
+
+/** A tracker's current field_version: new entries must use it (a fresh seed starts at 1). */
+export async function fieldVersion(client: SupabaseClient, slug: string): Promise<number> {
+  const { data, error } = await client
+    .from('trackers')
+    .select('field_version')
+    .eq('slug', slug)
+    .single()
+  if (error) throw error
+  const row: unknown = data
+  return (row as { field_version: number }).field_version
+}
