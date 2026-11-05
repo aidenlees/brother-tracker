@@ -1,0 +1,121 @@
+/*
+ * Design tokens: the only place the look is defined (CLAUDE.md, "Design rules").
+ *
+ * Each colour is declared once as light-dark(<light>, <dark>). The theme follows the
+ * system setting; <html data-theme="light|dark"> overrides it.
+ *
+ * Contrast (checked by tokens.test.ts, both themes):
+ *   - text tokens and every tracker accent reach 4.5:1 on paper and surface
+ *   - paper-coloured text on any accent fill reaches 4.5:1
+ *   - --field-border and --focus reach 3:1 against the backgrounds they sit on
+ * --hairline is decorative only; never use it as the sole boundary of a control.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Palette */
+  --paper: light-dark(#faf7f2, #1a1916);
+  --surface: light-dark(#fffdf9, #23221e);
+  --muted-fill: light-dark(#f1ece3, #2c2a25);
+  --ink: light-dark(#1f2328, #ece7df);
+  --ink-muted: light-dark(#5a5f67, #aba59b);
+  --hairline: light-dark(#e4ded3, #3a3832);
+  --field-border: light-dark(#8a857c, #7d786f);
+  --focus: light-dark(#2c5aa0, #8fb3f0);
+  --danger: light-dark(#a8321f, #f2a08e);
+
+  /* Tracker accents: exactly six. A tracker's `color` names one of these. */
+  --tracker-ink-blue: light-dark(#1f4e8c, #94b6f0);
+  --tracker-rosin-amber: light-dark(#8a5300, #e9b562);
+  --tracker-moss: light-dark(#3e6a29, #a2cb86);
+  --tracker-plum: light-dark(#6d3872, #d6a7da);
+  --tracker-teal: light-dark(#1c6969, #80cdca);
+  --tracker-brick: light-dark(#a0381f, #f29b85);
+
+  /* Type */
+  --type-heading: 'Fraunces Variable', Georgia, serif;
+  --type-ui: 'Inter Variable', system-ui, sans-serif;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* Remove Tailwind's default palette and shadows so components can only use tokens. */
+@theme {
+  --color-*: initial;
+  --shadow-*: initial;
+  --radius-*: initial;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --spacing: 0.25rem;
+}
+
+/* Semantic names (shadcn/ui conventions) mapped onto the palette. */
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--ink);
+  --color-primary-foreground: var(--paper);
+  --color-muted: var(--muted-fill);
+  --color-muted-foreground: var(--ink-muted);
+  --color-destructive: var(--danger);
+  --color-border: var(--hairline);
+  --color-input: var(--field-border);
+  --color-ring: var(--focus);
+
+  --color-tracker-ink-blue: var(--tracker-ink-blue);
+  --color-tracker-rosin-amber: var(--tracker-rosin-amber);
+  --color-tracker-moss: var(--tracker-moss);
+  --color-tracker-plum: var(--tracker-plum);
+  --color-tracker-teal: var(--tracker-teal);
+  --color-tracker-brick: var(--tracker-brick);
+
+  --font-heading: var(--type-heading);
+  --font-sans: var(--type-ui);
+}
+
+@layer base {
+  html {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,212 @@
+-- Shared fixtures for the pgTAP files in this folder.
+--
+-- Every test file runs `begin; \ir _helpers.psql ... rollback;`, so nothing created
+-- here outlives a test file. The .psql extension keeps `supabase test db` from
+-- running this file as a test of its own. Local only: never run tests --remote.
+
+create extension if not exists pgtap with schema extensions;
+
+create schema tests;
+create table tests.world (name text primary key, id uuid not null);
+
+-- Lookups are security definer: a query that RLS refuses must not "pass" simply
+-- because the test could not find its own target row.
+create function tests.id(p_name text) returns uuid
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  v uuid;
+begin
+  select w.id into v from tests.world w where w.name = p_name;
+  if v is null then
+    raise exception 'tests.id: no fixture named %', p_name;
+  end if;
+  return v;
+end $$;
+
+create function tests.today() returns date
+language sql stable as $$
+  select (now() at time zone 'America/New_York')::date
+$$;
+
+create function tests.create_user(p_name text, p_role text, p_active boolean default true)
+returns uuid language plpgsql as $$
+declare
+  v uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+                          raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values (v, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          p_name || '@example.test', '', now(),
+          '{"provider": "email", "providers": ["email"]}', '{}', now(), now());
+  if p_role is not null then
+    insert into public.profiles (id, role, display_name, active)
+    values (v, p_role, initcap(p_name), p_active);
+  end if;
+  insert into tests.world values (p_name, v);
+  return v;
+end $$;
+
+-- Switch to a fixture user, as PostgREST would for their JWT. Call it as postgres;
+-- use `reset role;` to switch back.
+create function tests.authenticate_as(p_name text, p_aal text default 'aal1') returns void
+language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', tests.id(p_name), 'role', 'authenticated', 'aal', p_aal)::text, true);
+  perform set_config('role', 'authenticated', true);
+end $$;
+
+create function tests.as_anon() returns void
+language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"role": "anon"}', true);
+  perform set_config('role', 'anon', true);
+end $$;
+
+-- Runs a statement as the current role and returns how many rows it changed.
+-- RLS refuses UPDATE and DELETE silently (0 rows), so tests assert on this count.
+create function tests.rows_affected(p_sql text) returns int
+language plpgsql as $$
+declare
+  n int;
+begin
+  execute p_sql;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+-- Counts every row of a public table, ignoring RLS.
+create function tests.count_all(p_table text) returns int
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  n int;
+begin
+  execute format('select count(*) from public.%I', p_table) into n;
+  return n;
+end $$;
+
+create function tests.assignment(p_student text, p_tracker text) returns uuid
+language sql stable security definer set search_path = '' as $$
+  select a.id from public.assignments a
+  where a.student_id = tests.id(p_student) and a.tracker_id = tests.id(p_tracker)
+$$;
+
+create function tests.plan_item(p_student text, p_session int) returns uuid
+language sql stable security definer set search_path = '' as $$
+  select p.id from public.plan_items p
+  where p.assignment_id = tests.assignment(p_student, 'test-plan')
+    and (p.details ->> 'session')::int = p_session
+$$;
+
+-- Inserts an entry as postgres (RLS does not apply; validation still does) and
+-- records it in tests.world under p_name.
+create function tests.add_entry(p_name text, p_student text, p_tracker text, p_date date,
+                                p_data jsonb, p_plan_item uuid default null)
+returns uuid language plpgsql as $$
+declare
+  v uuid;
+begin
+  insert into public.entries (assignment_id, plan_item_id, field_version, date, data, owner_id)
+  values (tests.assignment(p_student, p_tracker), p_plan_item, 1, p_date, p_data, tests.id(p_student))
+  returning id into v;
+  insert into tests.world values (p_name, v);
+  return v;
+end $$;
+
+-- Makes an entry look p_days old, for the 7-day edit lock.
+create function tests.age_entry(p_name text, p_days int) returns void
+language sql as $$
+  update public.entries set created_at = now() - make_interval(days => p_days)
+  where id = tests.id(p_name)
+$$;
+
+-- Local seed data (supabase/seed.sql, pnpm seed) must not change what the tests count,
+-- so every file starts from empty tables. The file's own transaction rolls this back.
+create function tests.clear_local_data() returns void
+language plpgsql as $$
+begin
+  truncate table
+    public.audit_log, public.push_subscriptions, public.comments, public.attachments,
+    public.followups, public.entries, public.plan_items, public.assignments,
+    public.plan_templates, public.tracker_versions, public.trackers, public.viewer_links,
+    public.profiles;
+  perform set_config('storage.allow_delete_query', 'true', true);
+  delete from storage.objects where bucket_id = 'attachments';
+  perform set_config('storage.allow_delete_query', 'false', true);
+  delete from auth.users;
+end $$;
+
+-- The cast for every test file:
+--   admin; viewer (linked to student); viewer2 (linked to nobody);
+--   student and student2 (each assigned both test trackers); former (inactive student);
+--   noprofile (signed in, but no profile row).
+-- Trackers: test-daily (yes/no + focus shown only on "yes") and test-plan
+-- (checklist, tally hidden on reading-only sessions, minutes, did, struggled),
+-- with a two-session template: session 1 reading-only, session 2 practice.
+create function tests.make_world() returns void
+language plpgsql as $$
+begin
+  perform tests.clear_local_data();
+  perform tests.create_user('admin', 'admin');
+  perform tests.create_user('viewer', 'viewer');
+  perform tests.create_user('viewer2', 'viewer');
+  perform tests.create_user('student', 'student');
+  perform tests.create_user('student2', 'student');
+  perform tests.create_user('former', 'student', false);
+  perform tests.create_user('noprofile', null);
+
+  insert into public.viewer_links (viewer_id, student_id)
+  values (tests.id('viewer'), tests.id('student'));
+
+  with t as (
+    insert into public.trackers (slug, name, icon, color, cadence, sort, fields) values
+      ('test-daily', 'Daily check-in', 'music', 'rosin-amber', '{"type": "daily"}', 1, $j$[
+        {"key": "practiced", "type": "yes_no", "label": "Practiced?", "required": true},
+        {"key": "focus", "type": "short_text", "label": "Focus", "required": true,
+         "showIf": {"practiced": true}}
+      ]$j$),
+      ('test-plan', 'Planned sessions', 'calculator', 'ink-blue', '{"type": "plan"}', 2, $j$[
+        {"key": "checklist", "type": "checklist", "label": "Checklist", "required": true,
+         "options": [{"key": "attempted", "label": "Attempted"}, {"key": "explained", "label": "Explained"}]},
+        {"key": "outcomes", "type": "tally_group", "label": "Outcomes", "required": false,
+         "showIf": {"plan.reading_only": false},
+         "options": [{"key": "I", "label": "On my own"}, {"key": "H", "label": "After a hint"}]},
+        {"key": "minutes", "type": "duration", "label": "Minutes", "required": true},
+        {"key": "did", "type": "long_text", "label": "What I did", "required": true},
+        {"key": "struggled", "type": "long_text", "label": "What I struggled with", "required": true}
+      ]$j$)
+    returning slug, id
+  )
+  insert into tests.world select slug, id from t;
+
+  insert into public.plan_templates (tracker_id, name, first_date, items)
+  values (tests.id('test-plan'), 'Test plan', '2026-11-01', $j$[
+    {"date": "2026-11-01", "title": "Read pp. 1-4", "sort": 1,
+     "details": {"session": 1, "reading_only": true}},
+    {"date": "2026-11-03", "title": "Practice pp. 5-6", "sort": 2,
+     "details": {"session": 2, "reading_only": false}}
+  ]$j$);
+
+  perform public.assign_tracker(tests.id('student'), 'test-daily', tests.today() - 30);
+  perform public.assign_tracker(tests.id('student'), 'test-plan', tests.today() - 10);
+  perform public.assign_tracker(tests.id('student2'), 'test-daily', tests.today() - 30);
+  perform public.assign_tracker(tests.id('student2'), 'test-plan', tests.today() - 10);
+  perform public.assign_tracker(tests.id('former'), 'test-daily', tests.today() - 30);
+end $$;
+
+-- The migrations revoke EXECUTE from PUBLIC by default, so grant the test roles
+-- what they need to run assertions while impersonating users.
+grant usage on schema extensions, tests to anon, authenticated;
+grant execute on all functions in schema tests to anon, authenticated;
+do $$
+declare
+  f regprocedure;
+begin
+  for f in
+    select d.objid::regprocedure
+    from pg_depend d join pg_extension e on e.oid = d.refobjid
+    where e.extname = 'pgtap' and d.classid = 'pg_proc'::regclass and d.deptype = 'e'
+  loop
+    execute format('grant execute on function %s to anon, authenticated', f);
+  end loop;
+end $$;

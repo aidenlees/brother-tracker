@@ -8,7 +8,6 @@ coverage/
 # Secrets: never commit (repo is public)
 .env
 .env.*
-!.env.example
 *.pem
 *.key
 
@@ -46,3 +45,6 @@ desktop.ini
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
+
+# Playwright sessions for the fake local accounts
+e2e/.auth/
