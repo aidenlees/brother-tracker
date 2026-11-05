@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { PhotoStoreContext } from '@/trackers/fields/photo-store'
 import { supabaseOutboxApi } from './api'
 import { OutboxContext, type Outbox } from './outbox-context'
-import { devicePhotoStore } from './photos'
+import { devicePhotoStore } from './device-photo-store'
 import { discardItem, enqueue as enqueueOp, listOutbox, subscribe } from './store'
 import { flushOutbox, type OutboxApi } from './sync'
 import type { Op, OutboxItem } from './types'
