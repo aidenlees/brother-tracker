@@ -180,5 +180,16 @@ end $$;
 -- The migrations revoke EXECUTE from PUBLIC by default, so grant the test roles
 -- what they need to run assertions while impersonating users.
 grant usage on schema extensions, tests to anon, authenticated;
-grant execute on all functions in schema extensions to anon, authenticated;
 grant execute on all functions in schema tests to anon, authenticated;
+do $$
+declare
+  f regprocedure;
+begin
+  for f in
+    select d.objid::regprocedure
+    from pg_depend d join pg_extension e on e.oid = d.refobjid
+    where e.extname = 'pgtap' and d.classid = 'pg_proc'::regclass and d.deptype = 'e'
+  loop
+    execute format('grant execute on function %s to anon, authenticated', f);
+  end loop;
+end $$;
