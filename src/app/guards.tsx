@@ -5,7 +5,7 @@ import { OutboxProvider } from '@/lib/outbox/OutboxProvider'
 import { canUse, homeFor } from './nav'
 import { Shell } from './Shell'
 
-function Loading() {
+export function Loading() {
   return (
     <p role="status" className="p-12 text-muted-foreground">
       Loading…

@@ -1,12 +1,10 @@
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router'
-import { ForRole, Home, SignedIn } from './guards'
-import { LoginPage } from './login/LoginPage'
+import { ForRole, Home, Loading, SignedIn } from './guards'
 import { SCREENS } from './nav'
 import { NotBuiltPage } from './NotBuiltPage'
 import { NotFoundPage } from './NotFoundPage'
-import { OverviewPage } from './overview/OverviewPage'
-import { TodayPage } from './today/TodayPage'
+import { LoginPage, OverviewPage, TodayPage } from './pages'
 
 /** Screens built so far; the rest show a "not built yet" page until their phase. */
 const BUILT: Partial<Record<string, ReactNode>> = {
@@ -16,7 +14,14 @@ const BUILT: Partial<Record<string, ReactNode>> = {
 
 export const router = createBrowserRouter(
   [
-    { path: '/login', element: <LoginPage /> },
+    {
+      path: '/login',
+      element: (
+        <Suspense fallback={<Loading />}>
+          <LoginPage />
+        </Suspense>
+      ),
+    },
     {
       element: <SignedIn />,
       children: [

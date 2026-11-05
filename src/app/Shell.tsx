@@ -1,4 +1,5 @@
 import { AlertDialog } from 'radix-ui'
+import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { SyncStatus } from '@/components/SyncStatus'
 import { Button } from '@/components/ui/button'
@@ -64,7 +65,15 @@ export function Shell({
         </div>
       </header>
       <main id="main" className="mx-auto max-w-5xl px-6 py-12">
-        <Outlet />
+        <Suspense
+          fallback={
+            <p role="status" className="text-muted-foreground">
+              Loading…
+            </p>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
