@@ -53,15 +53,22 @@ pnpm install
 pnpm dev                 # http://localhost:5173/brother-tracker/
 supabase start           # local Postgres + Auth + Storage (Docker)
 supabase db reset        # all migrations + local seed (includes fake test users)
-supabase test db         # pgTAP RLS tests: must pass before any merge
+supabase test db         # pgTAP RLS tests (and the Zod/SQL parity checks): must pass before any merge
 pnpm env:local           # write .env.local (URL + publishable key only) from the running local stack
 pnpm gen:types           # regenerate src/lib/database.types.ts after a migration
+pnpm gen:parity          # rewrite supabase/tests/database/13_field_parity.sql from the field fixtures (Vitest fails when it is stale)
+pnpm gen:icons           # app icons in public/ from public/favicon.svg (commit the results)
 pnpm test                # Vitest
-pnpm e2e                 # Playwright (dev server + local Supabase); screenshots land in test-results/screens/
+pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
+pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' assignments, entries and retries around today; after db reset + seed
+pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview); screenshots land in test-results/screens/
+pnpm e2e --grep @pace    # the student-speed timing test: math log under 2 min, violin check-in about 10 s (also runs in pnpm e2e)
+pnpm e2e --project=pwa   # installed-app tests only: manifest, service worker, offline reload
 pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/radii)
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
-pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
 supabase db push         # apply migrations to the linked cloud project
+
+# Before e2e on a fresh stack: supabase db reset && pnpm seed && pnpm e2e:fixtures && pnpm env:local
 ```
 
 ## Repo layout
@@ -71,8 +78,8 @@ src/
   app/            routes: today/, log/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
-  trackers/       field registry, renderers, metric engine, Zod schema builder
-  lib/            supabase client, auth, offline outbox, date utils
+  trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, metrics
+  lib/            supabase client, auth (offline-safe), query cache, offline outbox (drafts, ops, photos, sync), date utils
 supabase/
   migrations/     timestamped SQL; never edit an applied migration, add a new one
   functions/      admin-users, digest-email, push-reminders, calendar-sync, keep-alive
@@ -81,6 +88,8 @@ supabase/
 seed/
   trackers.json        launch tracker definitions
   math_sessions.json   80-session math plan (plan template source)
+scripts/               seed, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
+e2e/                   Playwright specs; supabase.ts talks to the local stack only
 .github/workflows/     ci.yml, deploy.yml, backup.yml
 ```
 
