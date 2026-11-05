@@ -12,6 +12,10 @@ const card = (page: Page, name: string) => page.getByRole('region', { name, exac
 test.describe('@today the math card', () => {
   test.use({ storageState: authFile('student') })
 
+  test.beforeEach(async () => {
+    await clearEntries(await signedInClient(ACCOUNTS.student.email), 'singapore-math', todayNY())
+  })
+
   test('shows today’s session with its printed and PDF pages, ready to log', async ({ page }) => {
     await page.goto('today')
     const math = card(page, 'Singapore Math')
