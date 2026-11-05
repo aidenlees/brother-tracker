@@ -112,6 +112,7 @@ seed/
 3. **`entries`, `followups`, `attachments`:**
    - Insert only when `owner_id = auth.uid()`, `role() = 'student'`, and the referenced assignment's `student_id = auth.uid()`.
    - Update and delete: the same, plus `created_at > now() - interval '7 days'`.
+     - Exception: a followup's `status` can still change after 7 days (review sessions close old followups); its label and due date stay locked.
    - Select: `can_see(owner_id)`.
 4. **`profiles`, `viewer_links`:** write by admin only. Nobody can change their own role, even the admin through the client: role changes go through `admin-users` or SQL.
 5. **`trackers`, `tracker_versions`, `plan_templates`:**
