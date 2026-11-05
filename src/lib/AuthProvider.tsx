@@ -1,7 +1,16 @@
 import type { AuthError, Session } from '@supabase/supabase-js'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AuthContext, NOTICES, type Auth, type AuthState, type SignInResult } from './auth-context'
-import { supabase, type Role } from './supabase'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  AuthContext,
+  NOTICES,
+  type Auth,
+  type AuthState,
+  type SignedInProfile,
+  type SignInResult,
+} from './auth-context'
+import { identityCache, isUnreachable, storedSessionUserId } from './identity'
+import { AUTH_STORAGE_KEY, supabase, type Role } from './supabase'
 
 const ROLES: readonly string[] = ['student', 'admin', 'viewer'] satisfies Role[]
 
@@ -32,88 +41,172 @@ function aalOf(session: Session): string {
 
 type Resolved =
   | { kind: 'needs-code' }
-  | { kind: 'profile'; profile: Extract<AuthState, { status: 'signed-in' }>['profile'] }
+  | { kind: 'profile'; profile: SignedInProfile; offline: boolean }
   | { kind: 'refused'; notice: string }
+  | { kind: 'unreachable' }
 
-/** What a session may see: the code step, the app, or nothing (with the reason). */
+/** What a session may see: the code step, the app, nothing (with the reason), or "ask again later". */
 async function resolve(session: Session): Promise<Resolved> {
   const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   if (assurance?.nextLevel === 'aal2' && assurance.currentLevel !== 'aal2') {
     return { kind: 'needs-code' }
   }
 
-  const { data: profile, error } = await supabase
+  const {
+    data: profile,
+    error,
+    status,
+  } = await supabase
     .from('profiles')
     .select('id, role, display_name, active')
     .eq('id', session.user.id)
     .maybeSingle()
-  if (error) throw error
+  if (error) {
+    if (isUnreachable(error, status)) return { kind: 'unreachable' }
+    throw error
+  }
 
   if (!profile || !ROLES.includes(profile.role))
     return { kind: 'refused', notice: NOTICES.notSetUp }
   if (!profile.active) return { kind: 'refused', notice: NOTICES.turnedOff }
-  return { kind: 'profile', profile: { ...profile, role: profile.role as Role } }
+  return { kind: 'profile', profile: { ...profile, role: profile.role as Role }, offline: false }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  /** undefined until the stored session has been read; null when signed out. */
+  const queryClient = useQueryClient()
+  /** undefined until the stored session has been read; null when there is none to use. */
   const [session, setSession] = useState<Session | null | undefined>(undefined)
+  /**
+   * The stored session couldn't be refreshed because the server was unreachable. It is
+   * still in storage and will refresh once the network is back.
+   */
+  const [stalled, setStalled] = useState(false)
   const [resolved, setResolved] = useState<{ identity: string; result: Resolved } | null>(null)
   const [notice, setNotice] = useState<string | undefined>(undefined)
+  const [remembered, setRemembered] = useState(() => identityCache.read())
+  /**
+   * Whose session is in storage right now, read once at start. Offline, supabase-js
+   * retries a refresh for up to 30 s before getSession settles, so the app opens on
+   * the profile this device remembers for that same user instead of waiting. Not for
+   * admins: their MFA check must always come first.
+   */
+  const [startedAs] = useState(() => {
+    const id = storedSessionUserId(localStorage, AUTH_STORAGE_KEY)
+    const known = identityCache.read()
+    return id && known?.id === id && known.role !== 'admin' ? known : null
+  })
+  /** Bumped when the browser comes back online, to ask the server again. */
+  const [attempt, setAttempt] = useState(0)
+  /**
+   * Bumped by signOut. A session that arrives afterwards from work started before it (a
+   * slow offline refresh that finally got through) is ignored, so sign-out sticks.
+   */
+  const signOuts = useRef(0)
+  const signingOut = useRef(false)
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-    })
+    const load = () => {
+      const started = signOuts.current
+      return supabase.auth.getSession().then(({ data, error }) => {
+        if (signOuts.current !== started) return
+        setStalled(data.session === null && error !== null && isUnreachable(error))
+        setSession(data.session)
+      })
+    }
+    void load()
     // Keep this callback synchronous: calling Supabase from inside it can deadlock.
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      if (signingOut.current && next) return
+      if (event === 'SIGNED_OUT') {
+        // A real sign-out, or Supabase found the session dead: forget this device's profile.
+        identityCache.clear()
+        setRemembered(null)
+        setStalled(false)
+      }
+      // An empty first event can mean "couldn't refresh offline"; load() tells the two apart.
+      if (event === 'INITIAL_SESSION' && next === null) return
+      if (next) setStalled(false)
       setSession(next)
     })
+    const onOnline = () => {
+      setAttempt((n) => n + 1)
+      void load()
+    }
+    window.addEventListener('online', onOnline)
     return () => {
       data.subscription.unsubscribe()
+      window.removeEventListener('online', onOnline)
     }
   }, [])
 
-  // Resolve again only when the user or their assurance level changes, not on every
-  // hourly token refresh.
+  // Resolve again when the user or their assurance level changes (not on every hourly
+  // token refresh), and when the network comes back.
   const identity = session ? `${session.user.id}:${aalOf(session)}` : null
 
   useEffect(() => {
     if (!session || !identity) return
     let current = true
+    const refuse = async (message: string) => {
+      identityCache.clear()
+      setRemembered(null)
+      setNotice(message)
+      await supabase.auth.signOut({ scope: 'local' })
+    }
     resolve(session)
       .then(async (result) => {
         if (!current) return
-        if (result.kind === 'refused') {
-          setNotice(result.notice)
-          await supabase.auth.signOut({ scope: 'local' })
+        if (result.kind === 'unreachable') {
+          const fallback = identityCache.read()
+          if (fallback?.id === session.user.id) {
+            setResolved({ identity, result: { kind: 'profile', profile: fallback, offline: true } })
+          } else {
+            await refuse('Couldn’t reach the server. Check your connection and sign in again.')
+          }
           return
+        }
+        if (result.kind === 'refused') {
+          await refuse(result.notice)
+          return
+        }
+        if (result.kind === 'profile') {
+          identityCache.write(result.profile)
+          setRemembered(result.profile)
         }
         setResolved({ identity, result })
       })
       .catch(async () => {
-        if (!current) return
-        setNotice('Couldn’t load your account. Check your connection and sign in again.')
-        await supabase.auth.signOut({ scope: 'local' })
+        if (current)
+          await refuse('Couldn’t load your account. Check your connection and sign in again.')
       })
     return () => {
       current = false
     }
     // `session` changes on every token refresh; `identity` captures what matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identity])
+  }, [identity, attempt])
 
   const state: AuthState = useMemo(() => {
-    if (session === undefined) return { status: 'loading' }
-    if (session === null)
+    // Not yet confirmed by the server: carry on as the remembered user, if it's them.
+    const provisional = (current: Session | null): AuthState | null => {
+      const known = remembered && startedAs?.id === remembered.id ? remembered : null
+      if (!known || (current && current.user.id !== known.id)) return null
+      return { status: 'signed-in', session: current, profile: known, offline: true }
+    }
+    if (session === undefined) return provisional(null) ?? { status: 'loading' }
+    if (session === null) {
+      if (stalled && remembered) {
+        return { status: 'signed-in', session: null, profile: remembered, offline: true }
+      }
       return notice ? { status: 'signed-out', notice } : { status: 'signed-out' }
-    if (resolved?.identity !== identity) return { status: 'loading' }
-    return resolved.result.kind === 'needs-code'
-      ? { status: 'needs-code', session }
-      : resolved.result.kind === 'profile'
-        ? { status: 'signed-in', session, profile: resolved.result.profile }
-        : { status: 'loading' }
-  }, [session, identity, resolved, notice])
+    }
+    if (resolved?.identity !== identity) return provisional(session) ?? { status: 'loading' }
+    const result = resolved.result
+    if (result.kind === 'needs-code') return { status: 'needs-code', session }
+    if (result.kind === 'profile') {
+      return { status: 'signed-in', session, profile: result.profile, offline: result.offline }
+    }
+    return { status: 'loading' }
+  }, [session, stalled, remembered, startedAs, identity, resolved, notice])
 
   const signIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
     setNotice(undefined)
@@ -131,9 +224,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(async () => {
+    // Forget everything on this device first, so the screen changes at once even when
+    // supabase-js is busy retrying an offline refresh (it holds its lock for up to 30 s).
+    signOuts.current += 1
+    signingOut.current = true
     setNotice(undefined)
-    await supabase.auth.signOut({ scope: 'local' })
-  }, [])
+    identityCache.clear()
+    setRemembered(null)
+    queryClient.clear()
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    setStalled(false)
+    setResolved(null)
+    setSession(null)
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } finally {
+      // Offline with an expired token, supabase-js returns early and keeps the session,
+      // and a refresh that got through meanwhile may have saved one: remove it again.
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+      signingOut.current = false
+    }
+  }, [queryClient])
 
   const value = useMemo<Auth>(
     () => ({ ...state, signIn, verifyCode, signOut }),

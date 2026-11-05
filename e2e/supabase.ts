@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { PASSWORD } from './accounts'
 
 /** The local stack's public URL and publishable key, from .env.local (pnpm env:local). */
-function localEnv(): { url: string; key: string } {
+export function localEnv(): { url: string; key: string } {
   const text = readFileSync(resolve(import.meta.dirname, '..', '.env.local'), 'utf8')
   const value = (name: string) => {
     const match = new RegExp(`^${name}=(.+)$`, 'm').exec(text)
@@ -27,4 +27,9 @@ export async function signedInClient(email: string): Promise<SupabaseClient> {
   const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD })
   if (error) throw error
   return client
+}
+
+/** Where supabase-js keeps the session in the browser (its default name). */
+export function authStorageKey(): string {
+  return `sb-${new URL(localEnv().url).hostname.split('.')[0] ?? 'local'}-auth-token`
 }
