@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import type { EntryView } from '@/lib/outbox/overlay'
+import { queuePhotos } from '@/lib/outbox/queue-photos'
 import type { Assignment, Tracker } from '@/lib/student-data'
 import type { FieldDefinition, FieldTypeName } from '@/trackers/definition'
 import {
@@ -62,6 +63,7 @@ export function InlineCheckIn({
       return
     }
     setIssues([])
+    const entryId = todays?.id ?? crypto.randomUUID()
     if (todays) {
       await outbox.enqueue({
         kind: 'entry.update',
@@ -72,7 +74,7 @@ export function InlineCheckIn({
       await outbox.enqueue({
         kind: 'entry.create',
         row: {
-          id: crypto.randomUUID(),
+          id: entryId,
           assignment_id: assignment.id,
           plan_item_id: null,
           field_version: tracker.field_version,
@@ -82,6 +84,7 @@ export function InlineCheckIn({
         },
       })
     }
+    await queuePhotos(outbox.enqueue, tracker.fields, result.data, entryId, outbox.userId)
     setJustSaved(result.data)
     setEditing(false)
   }

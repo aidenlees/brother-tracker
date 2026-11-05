@@ -35,6 +35,8 @@ export type Op =
   | { kind: 'entry.update'; id: string; patch: EntryPatch }
   | { kind: 'followup.create'; row: FollowupRow }
   | { kind: 'followup.update'; id: string; patch: FollowupPatch }
+  /** Upload a photo kept on the device, then add its attachments row (id = attachment id). */
+  | { kind: 'photo.upload'; id: string; entry_id: string; owner_id: string }
 
 export type OutboxItem = {
   /** `${userId}:${sequence}`: sorts in the order the ops were made. */

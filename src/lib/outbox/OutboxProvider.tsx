@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { PhotoStoreContext } from '@/trackers/fields/photo-store'
 import { supabaseOutboxApi } from './api'
 import { OutboxContext, type Outbox } from './outbox-context'
+import { devicePhotoStore } from './photos'
 import { discardItem, enqueue as enqueueOp, listOutbox, subscribe } from './store'
 import { flushOutbox, type OutboxApi } from './sync'
 import type { Op, OutboxItem } from './types'
@@ -142,5 +144,10 @@ export function OutboxProvider({
     }),
     [userId, items, pending, syncing, offline, syncedAt, enqueue, flush],
   )
-  return <OutboxContext value={value}>{children}</OutboxContext>
+  const photos = useMemo(() => devicePhotoStore(userId), [userId])
+  return (
+    <OutboxContext value={value}>
+      <PhotoStoreContext value={photos}>{children}</PhotoStoreContext>
+    </OutboxContext>
+  )
 }

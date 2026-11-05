@@ -11,6 +11,8 @@ function describeOp(item: OutboxItem): string {
     case 'followup.create':
     case 'followup.update':
       return 'A retry'
+    case 'photo.upload':
+      return 'A photo'
   }
 }
 

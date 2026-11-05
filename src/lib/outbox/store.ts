@@ -137,6 +137,9 @@ function fold(queued: OutboxItem[], op: Op): OutboxItem | null {
     ) {
       return { ...item, op }
     }
+    if (op.kind === 'photo.upload' && held.kind === 'photo.upload' && held.id === op.id) {
+      return { ...item, op }
+    }
   }
   return null
 }
@@ -187,6 +190,7 @@ export function remapEntry(userId: string, from: string, to: string): Promise<vo
       if (op.kind === 'followup.create' && op.row.entry_id === from) {
         next = { ...op, row: { ...op.row, entry_id: to } }
       }
+      if (op.kind === 'photo.upload' && op.entry_id === from) next = { ...op, entry_id: to }
       if (next) await set(item.key, { ...item, op: next }, outbox())
     }
     changed()

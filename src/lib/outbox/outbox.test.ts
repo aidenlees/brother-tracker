@@ -1,8 +1,9 @@
 // @vitest-environment node
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { getPhoto, putPhoto } from './photos'
 import { draftKey, enqueue, getDraft, listOutbox, saveDraft, deleteDraft } from './store'
-import { flushOutbox, REASONS, type ApiResult, type OutboxApi } from './sync'
+import { flushOutbox, REASONS, type ApiResult, type AttachmentRow, type OutboxApi } from './sync'
 import type { EntryRow, FollowupRow } from './types'
 
 /**
@@ -13,6 +14,8 @@ import type { EntryRow, FollowupRow } from './types'
 function fakeServer() {
   const entries = new Map<string, EntryRow>()
   const followups = new Map<string, FollowupRow>()
+  const objects = new Map<string, Blob>()
+  const attachments = new Map<string, AttachmentRow>()
   const calls: string[] = []
   const state = {
     offline: false,
@@ -94,8 +97,43 @@ function fakeServer() {
       followups.set(id, { ...current, ...patch })
       return ok(1)
     },
+    async uploadPhoto(path, blob) {
+      calls.push(`uploadPhoto ${path}`)
+      await wire()
+      if (state.offline) return down
+      if (objects.has(path))
+        return { error: { message: 'The resource already exists' }, status: 409 }
+      objects.set(path, blob)
+      if (state.loseNextAnswer) {
+        state.loseNextAnswer = false
+        return down
+      }
+      return ok()
+    },
+    async insertAttachment(row) {
+      calls.push(`insertAttachment ${row.id}`)
+      await wire()
+      if (state.offline) return down
+      if (!entries.has(row.entry_id)) {
+        return { error: { code: '23503', message: 'violates foreign key constraint' }, status: 409 }
+      }
+      if (attachments.has(row.id)) {
+        return {
+          error: { code: '23505', message: 'violates unique constraint "attachments_pkey"' },
+          status: 409,
+        }
+      }
+      attachments.set(row.id, row)
+      return ok()
+    },
+    async findAttachment(id) {
+      calls.push(`findAttachment ${id}`)
+      await wire()
+      if (state.offline) return down
+      return ok(attachments.has(id) ? 1 : 0)
+    },
   }
-  return { api, entries, followups, calls, state }
+  return { api, entries, followups, objects, attachments, calls, state }
 }
 
 let n = 0
@@ -281,6 +319,79 @@ describe('the outbox', () => {
     expect((await flushOutbox(user, server.api)).synced).toBe(1)
     expect(await listOutbox(other)).toHaveLength(1)
     expect([...server.entries.values()].map((e) => e.owner_id)).toEqual([user])
+  })
+})
+
+describe('photos', () => {
+  const photo = () => new Blob(['jpeg bytes'], { type: 'image/jpeg' })
+
+  it('upload after their entry, then get their row, then leave the device', async () => {
+    const server = fakeServer()
+    const e = entry()
+    const attachment = id()
+    await putPhoto(user, attachment, photo())
+    await enqueue(user, { kind: 'entry.create', row: { ...e, data: { notebook: attachment } } })
+    await enqueue(user, { kind: 'photo.upload', id: attachment, entry_id: e.id, owner_id: user })
+
+    expect((await flushOutbox(user, server.api)).synced).toBe(2)
+    const path = `${user}/${e.id}/${attachment}.jpg`
+    expect(server.calls).toEqual([
+      `insertEntry ${e.id}`,
+      `uploadPhoto ${path}`,
+      `insertAttachment ${attachment}`,
+    ])
+    expect(server.attachments.get(attachment)?.storage_path).toBe(path)
+    expect(await getPhoto(attachment)).toBeUndefined()
+  })
+
+  it('wait offline, and an upload whose answer was lost isn’t uploaded twice', async () => {
+    const server = fakeServer()
+    const e = entry()
+    server.entries.set(e.id, e)
+    const attachment = id()
+    await putPhoto(user, attachment, photo())
+    await enqueue(user, { kind: 'photo.upload', id: attachment, entry_id: e.id, owner_id: user })
+
+    server.state.loseNextAnswer = true
+    expect((await flushOutbox(user, server.api)).offline).toBe(true)
+    expect(await getPhoto(attachment)).toBeDefined() // still here
+    expect((await flushOutbox(user, server.api)).synced).toBe(1)
+    expect(server.objects.size).toBe(1)
+    expect(server.attachments.size).toBe(1)
+  })
+
+  it('count as done when the device lost the photo after it was saved, and parked when not', async () => {
+    const server = fakeServer()
+    const e = entry()
+    server.entries.set(e.id, e)
+    const saved = id()
+    server.attachments.set(saved, {
+      id: saved,
+      entry_id: e.id,
+      storage_path: `${user}/${e.id}/${saved}.jpg`,
+      kind: 'photo',
+      owner_id: user,
+    })
+    const lost = id()
+    await enqueue(user, { kind: 'photo.upload', id: saved, entry_id: e.id, owner_id: user })
+    await enqueue(user, { kind: 'photo.upload', id: lost, entry_id: e.id, owner_id: user })
+
+    expect(await flushOutbox(user, server.api)).toMatchObject({ synced: 1, parked: 1 })
+    expect((await listOutbox(user))[0]?.parked?.reason).toBe(REASONS.photoGone)
+  })
+
+  it('follow their entry when it turns out to be another device’s row', async () => {
+    const server = fakeServer()
+    const theirs = entry()
+    server.entries.set(theirs.id, theirs)
+    const ours = entry()
+    const attachment = id()
+    await putPhoto(user, attachment, photo())
+    await enqueue(user, { kind: 'entry.create', row: ours })
+    await enqueue(user, { kind: 'photo.upload', id: attachment, entry_id: ours.id, owner_id: user })
+
+    expect((await flushOutbox(user, server.api)).synced).toBe(2)
+    expect(server.attachments.get(attachment)?.entry_id).toBe(theirs.id)
   })
 })
 

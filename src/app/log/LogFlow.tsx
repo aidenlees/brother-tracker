@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import type { EntryView, FollowupView } from '@/lib/outbox/overlay'
+import { queuePhotos } from '@/lib/outbox/queue-photos'
 import { deleteDraft, saveDraft } from '@/lib/outbox/store'
 import type { Draft } from '@/lib/outbox/types'
 import type { Tracker } from '@/lib/student-data'
@@ -195,7 +196,9 @@ export function LogFlow({
         },
       })
     }
-    await saveRetries(existing?.id ?? draft.entryId)
+    const entryId = existing?.id ?? draft.entryId
+    await queuePhotos(outbox.enqueue, tracker.fields, result.data, entryId, outbox.userId)
+    await saveRetries(entryId)
     await deleteDraft(draft.key)
     void navigate('/today', { state: { saved: existing?.id ?? draft.entryId } })
   }

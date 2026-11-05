@@ -50,6 +50,28 @@ export const supabaseOutboxApi: OutboxApi = {
     return result(error, status)
   },
 
+  async uploadPhoto(path, blob) {
+    const { error } = await supabase.storage
+      .from('attachments')
+      .upload(path, blob, { contentType: 'image/jpeg', upsert: false })
+    if (!error) return result(null, 200)
+    const status = 'status' in error && typeof error.status === 'number' ? error.status : 0
+    const exists =
+      ('code' in error && error.code === 'ResourceAlreadyExists') ||
+      ('statusCode' in error && error.statusCode === '409')
+    return { error: { message: error.message }, status: exists ? 409 : status }
+  },
+
+  async insertAttachment(row) {
+    const { error, status } = await supabase.from('attachments').insert(row)
+    return result(error, status)
+  },
+
+  async findAttachment(id) {
+    const { data, error, status } = await supabase.from('attachments').select('id').eq('id', id)
+    return result(error, status, data?.length ?? 0)
+  },
+
   async updateFollowup(id, patch) {
     const {
       data: rows,

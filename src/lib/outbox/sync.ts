@@ -14,6 +14,7 @@
  *     on the device, and ops that need its entry wait behind it.
  */
 import { isUnreachable } from '../identity'
+import { deletePhoto, getPhoto } from './photos'
 import { completeItem, getItem, listOutbox, parkItem, remapEntry, withFlushLock } from './store'
 import type { EntryPatch, EntryRow, FollowupPatch, FollowupRow, Op } from './types'
 
@@ -29,6 +30,19 @@ export type OutboxApi = {
   ) => Promise<ApiResult & { id: string | null }>
   insertFollowup: (row: FollowupRow) => Promise<ApiResult>
   updateFollowup: (id: string, patch: FollowupPatch) => Promise<ApiResult>
+  /** Uploads to the private attachments bucket; status 409 when the object already exists. */
+  uploadPhoto: (path: string, blob: Blob) => Promise<ApiResult>
+  insertAttachment: (row: AttachmentRow) => Promise<ApiResult>
+  /** Whether the attachments row exists (rows: 1 or 0). */
+  findAttachment: (id: string) => Promise<ApiResult>
+}
+
+export type AttachmentRow = {
+  id: string
+  entry_id: string
+  storage_path: string
+  kind: 'photo'
+  owner_id: string
 }
 
 export type FlushResult = {
@@ -45,6 +59,7 @@ export const REASONS = {
   followupLocked: 'This retry can’t be changed any more.',
   otherDevice:
     'This session was also logged on another device, and that entry can’t be changed now.',
+  photoGone: 'The photo is no longer on this device. Add it again from the entry.',
 } as const
 
 type Outcome =
@@ -126,6 +141,29 @@ async function run(op: Op, api: OutboxApi): Promise<Outcome> {
     }
     case 'followup.update':
       return expectOne(await api.updateFollowup(op.id, op.patch), REASONS.followupLocked)
+    case 'photo.upload': {
+      const photo = await getPhoto(op.id)
+      if (!photo) {
+        // An earlier pass may have finished it and been cut off before saying so.
+        const found = await api.findAttachment(op.id)
+        if (found.error) return classify(found)
+        return (found.rows ?? 0) > 0 ? done : { kind: 'refused', reason: REASONS.photoGone }
+      }
+      const path = `${op.owner_id}/${op.entry_id}/${op.id}.jpg`
+      const uploaded = await api.uploadPhoto(path, photo.blob)
+      if (uploaded.error && uploaded.status !== 409) return classify(uploaded)
+      const row = {
+        id: op.id,
+        entry_id: op.entry_id,
+        storage_path: path,
+        kind: 'photo' as const,
+        owner_id: op.owner_id,
+      }
+      const inserted = await api.insertAttachment(row)
+      if (inserted.error && inserted.error.code !== '23505') return classify(inserted)
+      await deletePhoto(op.id)
+      return done
+    }
   }
 }
 
@@ -133,6 +171,7 @@ async function run(op: Op, api: OutboxApi): Promise<Outcome> {
 function needs(op: Op): string | null {
   if (op.kind === 'followup.create') return op.row.entry_id
   if (op.kind === 'entry.update') return op.id
+  if (op.kind === 'photo.upload') return op.entry_id
   return null
 }
 

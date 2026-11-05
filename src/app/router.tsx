@@ -4,6 +4,7 @@ import { ForRole, Home, Loading, SignedIn } from './guards'
 import { SCREENS } from './nav'
 import { NotBuiltPage } from './NotBuiltPage'
 import { NotFoundPage } from './NotFoundPage'
+import { RouteError, RouteErrorPage } from './RouteError'
 import { LogPage, LoginPage, OverviewPage, TodayPage } from './pages'
 
 /** Screens built so far; the rest show a "not built yet" page until their phase. */
@@ -17,6 +18,7 @@ export const router = createBrowserRouter(
   [
     {
       path: '/login',
+      errorElement: <RouteErrorPage />,
       element: (
         <Suspense fallback={<Loading />}>
           <LoginPage />
@@ -25,10 +27,12 @@ export const router = createBrowserRouter(
     },
     {
       element: <SignedIn />,
+      errorElement: <RouteErrorPage />,
       children: [
         { index: true, element: <Home /> },
         ...SCREENS.map((screen) => ({
           path: screen.params ? `${screen.path}/${screen.params}` : screen.path,
+          errorElement: <RouteError />,
           element: (
             <ForRole path={screen.path}>
               {BUILT[screen.path] ?? <NotBuiltPage title={screen.label} />}
