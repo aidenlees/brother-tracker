@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { TRACKER_ACCENTS } from './accents'
 
 const css = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8')
 const seed = JSON.parse(
@@ -42,6 +43,10 @@ const themes = ['light', 'dark'] as const
 describe('design tokens', () => {
   it('defines exactly six tracker accents', () => {
     expect(accents).toHaveLength(6)
+  })
+
+  it('matches TRACKER_ACCENTS, the list tracker definitions validate against', () => {
+    expect(accents.map((a) => a.replace('tracker-', ''))).toEqual([...TRACKER_ACCENTS])
   })
 
   it('has an accent for every launch tracker colour', () => {

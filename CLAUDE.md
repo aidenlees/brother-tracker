@@ -58,7 +58,7 @@ pnpm test                # Vitest
 pnpm e2e                 # Playwright (dev server + local Supabase)
 pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/radii)
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
-pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people)
+pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
 supabase db push         # apply migrations to the linked cloud project
 ```
 
