@@ -1,7 +1,7 @@
 -- followups and attachments follow the same rules as entries (CLAUDE.md security rule 3).
 begin;
 \ir _helpers.psql
-select plan(17);
+select plan(20);
 select tests.make_world();
 
 select tests.add_entry('mine', 'student', 'test-plan', tests.today() - 1,
@@ -39,9 +39,17 @@ reset role;
 insert into public.followups (entry_id, assignment_id, label, due_date, owner_id, created_at)
 values (tests.id('old'), tests.assignment('student', 'test-plan'), 'p. 3 #1', tests.today() - 7,
         tests.id('student'), now() - interval '8 days');
+-- After 7 days a followup's label and due date lock and it can't be deleted, but its
+-- status can still change: review sessions close followups made weeks earlier.
 select tests.authenticate_as('student');
+select throws_ok($$update public.followups set label = 'p. 3 #2' where label = 'p. 3 #1'$$,
+  '42501', null, 'after 7 days a followup''s label is locked');
+select throws_ok($$update public.followups set due_date = due_date + 7 where label = 'p. 3 #1'$$,
+  '42501', null, '... and so is its due date');
+select is(tests.rows_affected($$delete from public.followups where label = 'p. 3 #1'$$),
+  0, '... and it cannot be deleted');
 select is(tests.rows_affected($$update public.followups set status = 'done' where label = 'p. 3 #1'$$),
-  0, 'a followup older than 7 days is locked');
+  1, '... but it can still be marked done');
 reset role;
 
 select tests.authenticate_as('admin');
