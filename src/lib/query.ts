@@ -16,14 +16,19 @@ export const CACHE_VERSION = '1'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1, gcTime: CACHE_MAX_AGE, networkMode: 'offlineFirst' },
+    // gcTime must not be CACHE_MAX_AGE: 30 days is past setTimeout's limit (about 24.8
+    // days), so the timer fires at once and every query nothing is showing is dropped,
+    // including the ones just restored from the device. Never collecting is fine here:
+    // one person's data, and the persisted copy still expires after CACHE_MAX_AGE.
+    queries: { staleTime: 30_000, retry: 1, gcTime: Infinity, networkMode: 'offlineFirst' },
     mutations: { networkMode: 'offlineFirst' },
   },
 })
 
 export const persister = createAsyncStoragePersister({
   key: 'practice-tracker:query-cache',
-  throttleTime: 1000,
+  // Written almost at once, so closing the app right after a screen loads still keeps it.
+  throttleTime: 100,
   storage: {
     getItem: async (key) => (await get<string>(key)) ?? null,
     setItem: (key, value: string) => set(key, value),
