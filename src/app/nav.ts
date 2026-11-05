@@ -6,6 +6,8 @@ export type Screen = {
   roles: readonly Role[]
   /** Shown in the main navigation. Log session is reached from Today, not the nav. */
   inNav: boolean
+  /** Route parameters after the path, e.g. ':assignmentId/:planItemId?'. */
+  params?: string
 }
 
 /**
@@ -14,7 +16,13 @@ export type Screen = {
  */
 export const SCREENS: readonly Screen[] = [
   { path: 'today', label: 'Today', roles: ['student'], inNav: true },
-  { path: 'log', label: 'Log session', roles: ['student'], inNav: false },
+  {
+    path: 'log',
+    label: 'Log session',
+    roles: ['student'],
+    inNav: false,
+    params: ':assignmentId/:planItemId?',
+  },
   { path: 'week', label: 'My week', roles: ['student'], inNav: true },
   { path: 'overview', label: 'Overview', roles: ['admin', 'viewer'], inNav: true },
   { path: 'struggles', label: 'Struggles', roles: ['admin', 'viewer'], inNav: true },

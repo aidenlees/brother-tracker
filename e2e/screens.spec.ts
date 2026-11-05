@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ACCOUNTS, authFile, ROLES } from './accounts'
+import { assignmentId, planItemId } from './data'
+import { signedInClient } from './supabase'
 
 /**
  * Screenshots for review, not comparison (CLAUDE.md, "Look at what you build"):
@@ -29,6 +31,32 @@ for (const viewport of VIEWPORTS) {
         await page.screenshot({
           path: `test-results/screens/login-${viewport.name}-${theme}.png`,
           fullPage: true,
+        })
+      })
+
+      test.describe('log flow', () => {
+        test.use({ storageState: authFile('student') })
+
+        test('steps', async ({ page }) => {
+          const client = await signedInClient(ACCOUNTS.student.email)
+          const math = await assignmentId(client, 'singapore-math')
+          await page.goto(`log/${math}/${await planItemId(client, 'singapore-math', 6)}`)
+          const shot = (name: string) =>
+            page.screenshot({
+              path: `test-results/screens/log-${name}-${viewport.name}-${theme}.png`,
+              fullPage: true,
+            })
+          await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
+          await page.keyboard.press('Space')
+          await shot('1-checklist')
+          await page.keyboard.press('Enter')
+          await page.keyboard.type('iiihs')
+          await shot('2-tally')
+          await page.keyboard.press('Enter')
+          await page.keyboard.type('45')
+          await page.keyboard.press('Enter')
+          await page.keyboard.press('Enter')
+          await shot('5-did')
         })
       })
 

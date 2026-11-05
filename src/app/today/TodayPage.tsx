@@ -1,9 +1,12 @@
 import { ArrowRight } from 'lucide-react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
+import { useOutbox } from '@/lib/outbox/outbox-context'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
+import type { Draft } from '@/lib/outbox/types'
+import { useDrafts } from '@/lib/outbox/use-drafts'
 import { useStudentData, type Assignment, type StudentData } from '@/lib/student-data'
 import { useToday } from '@/lib/use-today'
 import { streak } from '@/trackers/metrics/streak'
@@ -16,6 +19,9 @@ import { SavedNote, TrackerCard } from './TrackerCard'
 export function TodayPage() {
   const today = useToday()
   const data = useStudentData()
+  const drafts = useDrafts(useOutbox().userId)
+  /** Set by the log flow after a save, so that entry's check mark eases in. */
+  const savedId = (useLocation().state as { saved?: string } | null)?.saved
 
   return (
     <Page title="Today" lead={formatDay(today, 'long')}>
@@ -30,7 +36,14 @@ export function TodayPage() {
       ) : (
         <div className="flex max-w-2xl flex-col gap-6">
           {data.assignments.map((assignment) => (
-            <AssignmentCard key={assignment.id} assignment={assignment} data={data} today={today} />
+            <AssignmentCard
+              key={assignment.id}
+              assignment={assignment}
+              data={data}
+              drafts={drafts.filter((d) => d.assignmentId === assignment.id)}
+              savedId={savedId}
+              today={today}
+            />
           ))}
         </div>
       )}
@@ -41,10 +54,14 @@ export function TodayPage() {
 function AssignmentCard({
   assignment,
   data,
+  drafts,
+  savedId,
   today,
 }: {
   assignment: Assignment
   data: StudentData
+  drafts: Draft[]
+  savedId?: string
   today: string
 }) {
   const tracker = assignment.tracker
@@ -74,6 +91,8 @@ function AssignmentCard({
           assignment={assignment}
           items={data.planItems.filter((item) => item.assignment_id === assignment.id)}
           entries={entries}
+          drafts={drafts}
+          savedId={savedId}
           today={today}
         />
       ) : tracker.display === 'inline_on_today_card' ? (
@@ -85,7 +104,13 @@ function AssignmentCard({
           today={today}
         />
       ) : (
-        <DailyLog assignment={assignment} entries={entries} today={today} />
+        <DailyLog
+          assignment={assignment}
+          entries={entries}
+          inProgress={drafts.some((d) => d.planItemId === null && d.date === today)}
+          savedId={savedId}
+          today={today}
+        />
       )}
     </TrackerCard>
   )
@@ -95,10 +120,14 @@ function AssignmentCard({
 function DailyLog({
   assignment,
   entries,
+  inProgress,
+  savedId,
   today,
 }: {
   assignment: Assignment
   entries: EntryView[]
+  inProgress: boolean
+  savedId?: string
   today: string
 }) {
   if (today < assignment.start_date) {
@@ -110,17 +139,17 @@ function DailyLog({
   const href = logPath(assignment.id, { date: today })
   return entry ? (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <SavedNote sync={entry.sync} reason={entry.reason} />
+      <SavedNote sync={entry.sync} reason={entry.reason} fresh={entry.id === savedId} />
       {isEditable(entry) ? (
         <Button asChild variant="link" size="sm" className="h-auto px-0">
-          <Link to={href}>Edit</Link>
+          <Link to={href}>{inProgress ? 'Resume editing' : 'Edit'}</Link>
         </Button>
       ) : null}
     </div>
   ) : (
     <Button asChild size="lg" className="self-start">
       <Link to={href}>
-        Log today
+        {inProgress ? 'Resume logging' : 'Log today'}
         <ArrowRight aria-hidden />
       </Link>
     </Button>

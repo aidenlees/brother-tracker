@@ -13,3 +13,4 @@ export const TodayPage = lazy(() =>
 export const OverviewPage = lazy(() =>
   import('./overview/OverviewPage').then((m) => ({ default: m.OverviewPage })),
 )
+export const LogPage = lazy(() => import('./log/LogPage').then((m) => ({ default: m.LogPage })))

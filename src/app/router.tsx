@@ -4,11 +4,12 @@ import { ForRole, Home, Loading, SignedIn } from './guards'
 import { SCREENS } from './nav'
 import { NotBuiltPage } from './NotBuiltPage'
 import { NotFoundPage } from './NotFoundPage'
-import { LoginPage, OverviewPage, TodayPage } from './pages'
+import { LogPage, LoginPage, OverviewPage, TodayPage } from './pages'
 
 /** Screens built so far; the rest show a "not built yet" page until their phase. */
 const BUILT: Partial<Record<string, ReactNode>> = {
   today: <TodayPage />,
+  log: <LogPage />,
   overview: <OverviewPage />,
 }
 
@@ -27,7 +28,7 @@ export const router = createBrowserRouter(
       children: [
         { index: true, element: <Home /> },
         ...SCREENS.map((screen) => ({
-          path: screen.path,
+          path: screen.params ? `${screen.path}/${screen.params}` : screen.path,
           element: (
             <ForRole path={screen.path}>
               {BUILT[screen.path] ?? <NotBuiltPage title={screen.label} />}

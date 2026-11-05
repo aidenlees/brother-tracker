@@ -51,7 +51,8 @@ function YesNo({
         onChange(key === 'yes')
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Enter' && onSubmit) {
+        // The log flow may already have taken this Enter (it listens first).
+        if (event.key === 'Enter' && onSubmit && !event.defaultPrevented) {
           event.preventDefault()
           onSubmit()
         }

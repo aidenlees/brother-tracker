@@ -49,3 +49,17 @@ export async function clearEntries(client: SupabaseClient, slug: string, date: s
     .eq('date', date)
   if (error) throw error
 }
+
+/** The plan item for a session number in the student's plan for a tracker. */
+export async function planItemId(client: SupabaseClient, slug: string, session: number) {
+  const { data, error } = await client
+    .from('plan_items')
+    .select('id, details')
+    .eq('assignment_id', await assignmentId(client, slug))
+  if (error) throw error
+  const item = (data as { id: string; details: { session?: number } }[]).find(
+    (i) => i.details.session === session,
+  )
+  if (!item) throw new Error(`no session ${String(session)} in ${slug}`)
+  return item.id
+}

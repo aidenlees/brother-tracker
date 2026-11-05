@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
+import type { Draft } from '@/lib/outbox/types'
 import type { Assignment } from '@/lib/student-data'
 import { itemsOn, nextItem, pageLabel, sessionLabel, type PlanItem } from '@/trackers/plan'
 import { logPath } from '../log/paths'
@@ -13,11 +14,17 @@ export function PlanCard({
   assignment,
   items,
   entries,
+  drafts,
+  savedId,
   today,
 }: {
   assignment: Assignment
   items: PlanItem[]
   entries: EntryView[]
+  /** Logs in progress on this device. */
+  drafts: Draft[]
+  /** The entry the log flow just saved, so its check mark eases in. */
+  savedId?: string
   today: string
 }) {
   const todays = itemsOn(items, today)
@@ -32,6 +39,8 @@ export function PlanCard({
             key={item.id}
             item={item}
             entry={entryFor(item)}
+            inProgress={drafts.some((d) => d.planItemId === item.id)}
+            fresh={savedId !== undefined && entryFor(item)?.id === savedId}
             href={logPath(assignment.id, { planItemId: item.id })}
           />
         ))}
@@ -73,23 +82,35 @@ function ItemText({ item }: { item: PlanItem }) {
   )
 }
 
-function Session({ item, entry, href }: { item: PlanItem; entry?: EntryView; href: string }) {
+function Session({
+  item,
+  entry,
+  inProgress,
+  fresh,
+  href,
+}: {
+  item: PlanItem
+  entry?: EntryView
+  inProgress: boolean
+  fresh: boolean
+  href: string
+}) {
   return (
     <div className="flex flex-col gap-4">
       <ItemText item={item} />
       {entry ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <SavedNote sync={entry.sync} reason={entry.reason} />
+          <SavedNote sync={entry.sync} reason={entry.reason} fresh={fresh} />
           {isEditable(entry) ? (
             <Button asChild variant="link" size="sm" className="h-auto px-0">
-              <Link to={href}>Edit</Link>
+              <Link to={href}>{inProgress ? 'Resume editing' : 'Edit'}</Link>
             </Button>
           ) : null}
         </div>
       ) : (
         <Button asChild size="lg" className="self-start">
           <Link to={href}>
-            Log this session
+            {inProgress ? 'Resume logging' : 'Log this session'}
             <ArrowRight aria-hidden />
           </Link>
         </Button>
