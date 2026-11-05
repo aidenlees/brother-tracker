@@ -1,0 +1,11 @@
+dist
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+supabase
+.claude
+seed
+*.md
+.mcp.json
+skills-lock.json

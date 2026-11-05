@@ -37,7 +37,7 @@ Two invariants outrank everything: **only a student writes their own entries** (
 
 ## Stack
 
-- **Front end:** Vite + React 18 + TypeScript (strict), Tailwind CSS, shadcn/ui, Recharts, dnd-kit, TanStack Query, React Router, Zod. Installable PWA (vite-plugin-pwa).
+- **Front end:** Vite + React 19 + TypeScript (strict), Tailwind CSS, shadcn/ui, Recharts, dnd-kit, TanStack Query, React Router, Zod. Installable PWA (vite-plugin-pwa).
 - **Backend:** Supabase. Postgres with RLS, Auth (email + password only, sign-up disabled), Storage, Edge Functions (Deno), pg_cron.
 - **Hosting:** GitHub Pages via GitHub Actions on push to `main`. SPA fallback via `404.html`; Vite `base` is `/brother-tracker/`.
 - **Tests:** Vitest for unit tests, Playwright for end-to-end and screenshots, pgTAP (`supabase test db`) for RLS.
@@ -56,7 +56,8 @@ supabase db reset        # all migrations + local seed (includes fake test users
 supabase test db         # pgTAP RLS tests: must pass before any merge
 pnpm test                # Vitest
 pnpm e2e                 # Playwright (dev server + local Supabase)
-pnpm typecheck && pnpm lint
+pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/radii)
+pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
 pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people)
 supabase db push         # apply migrations to the linked cloud project
 ```
@@ -122,7 +123,7 @@ seed/
    - Authors edit and delete only their own comments.
 8. **Audit:** an `audit_log` trigger on every table above records actor, action, before and after.
 9. **Storage:** bucket `attachments` is private, with paths `{owner_id}/{entry_id}/{uuid}.jpg`. Policies mirror rule 3. Signed URLs last 10 minutes or less.
-10. **Keys:** only the anon key ships to the client. The service key lives only in Edge Function and Actions secrets. CI fails on `service_role` or JWT-looking strings in `src/` or `dist/`.
+10. **Keys:** only the publishable key (`sb_publishable_…`, the `anon` role) ships to the client; never the legacy anon JWT. The service key lives only in Edge Function and Actions secrets. CI fails on `service_role` or JWT-looking strings in `src/` or `dist/`.
 11. **Every policy change ships with pgTAP tests proving the refusals, written first.** Each of these must fail:
     - an admin insert
     - a viewer insert
@@ -283,7 +284,7 @@ No LLM API calls from this app.
 
 Mark the current phase when it changes.
 
-- [ ] **1. Foundation**
+- [ ] **1. Foundation** ← current (branch `phase-1`)
   - Builds: scaffold, full schema + helpers + RLS + audit, `assign_tracker`, pgTAP refusal tests, local fake-user seed, password login, role-based nav shell, `pnpm seed`, CI, Pages deploy.
   - *Done when:* every refusal in rule 11 is tested and failing correctly, the student's own write succeeds, and the site is live.
 - [ ] **2. Student MVP**

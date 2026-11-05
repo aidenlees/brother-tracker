@@ -8,7 +8,6 @@ coverage/
 # Secrets: never commit (repo is public)
 .env
 .env.*
-!.env.example
 *.pem
 *.key
 
