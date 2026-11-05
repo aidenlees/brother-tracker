@@ -563,14 +563,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_can_write: { Args: Record<PropertyKey, never>; Returns: boolean }
-      admin_mfa_ok: { Args: Record<PropertyKey, never>; Returns: boolean }
       assign_tracker: {
         Args: { start: string; student: string; template?: string; tracker_slug: string }
         Returns: string
       }
       attachment_path_part: { Args: { name: string; part: number }; Returns: string }
-      can_see: { Args: { student: string }; Returns: boolean }
       field_check_checkbox: { Args: { field: Json; value: Json }; Returns: string }
       field_check_checklist: { Args: { field: Json; value: Json }; Returns: string }
       field_check_counter: { Args: { field: Json; value: Json }; Returns: string }
@@ -587,8 +584,6 @@ export type Database = {
       field_check_yes_no: { Args: { field: Json; value: Json }; Returns: string }
       field_is_whole: { Args: { max: number; min: number; value: Json }; Returns: boolean }
       field_option_keys: { Args: { field: Json }; Returns: string[] }
-      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
-      role: { Args: Record<PropertyKey, never>; Returns: string }
       today_ny: { Args: Record<PropertyKey, never>; Returns: string }
     }
     Enums: {

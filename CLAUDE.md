@@ -107,10 +107,10 @@ seed/
 ## Security rules (non-negotiable)
 
 1. **RLS on every table**, enabled in the migration that creates it. Automatic RLS is also on in the project, but never rely on it.
-2. **Helpers** (`security definer`, `stable`, `search_path` pinned; policies use them and trust nothing from the client):
-   - `public.role()` returns the caller's role from `profiles`.
-   - `public.is_admin()` is true for the admin.
-   - `public.can_see(student uuid)` is true when `auth.uid() = student`, the caller is admin, or a `viewer_links` row exists for the pair.
+2. **Helpers** (`security definer`, `stable`, `search_path` pinned; policies use them and trust nothing from the client) live in the `private` schema, which the Data API doesn't expose. No `security definer` function in an exposed schema may be executable by `anon` or `authenticated` (pgTAP enforces this).
+   - `private.role()` returns the caller's role from `profiles`.
+   - `private.is_admin()` is true for the admin.
+   - `private.can_see(student uuid)` is true when `auth.uid() = student`, the caller is admin, or a `viewer_links` row exists for the pair.
 3. **`entries`, `followups`, `attachments`:**
    - Insert only when `owner_id = auth.uid()`, `role() = 'student'`, and the referenced assignment's `student_id = auth.uid()`.
    - Update and delete: the same, plus `created_at > now() - interval '7 days'`.
