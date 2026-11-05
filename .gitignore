@@ -1,0 +1,48 @@
+# Dependencies and build output
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+
+# Secrets: never commit (repo is public)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Supabase CLI local state (holds the linked project ref, pooler URL, versions)
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+supabase/functions/.env
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Personal Claude Code settings (shared ones in .claude/settings.json are fine)
+.claude/settings.local.json
+
+# Third-party agent skills: restore from skills-lock.json, don't vendor
+.claude/skills/supabase/
+.claude/skills/supabase-postgres-best-practices/
+
+# Copyrighted or personal source material: the app only needs page numbers
+*.pdf
+*.xls
+*.xlsx
+*.xlsm
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/

@@ -1,0 +1,141 @@
+{
+  "_note": "Launch tracker definitions. Field and metric types must match the registry described in CLAUDE.md. Load with the seed script; never put user IDs or emails in this file.",
+  "trackers": [
+    {
+      "slug": "singapore-math",
+      "name": "Singapore Math",
+      "icon": "calculator",
+      "color": "ink-blue",
+      "sort": 1,
+      "cadence": { "type": "plan", "plan_source": "seed/math_sessions.json" },
+      "field_version": 1,
+      "fields": [
+        {
+          "key": "checklist",
+          "type": "checklist",
+          "label": "Today's checklist",
+          "required": true,
+          "options": [
+            { "key": "attempted", "label": "Attempted the assigned problems" },
+            { "key": "checked", "label": "Checked answers and corrected mistakes" },
+            { "key": "explained", "label": "Explained one key idea" },
+            { "key": "retry_planned", "label": "Picked problems to retry (or none needed)" }
+          ]
+        },
+        {
+          "key": "outcomes",
+          "type": "tally_group",
+          "label": "How each problem went",
+          "required": false,
+          "help": "Tap once per problem or lettered part. Checking a solution after solving it yourself still counts as I.",
+          "showIf": { "plan.reading_only": false },
+          "options": [
+            { "key": "I", "label": "Solved on my own", "shortcut": "i" },
+            { "key": "H", "label": "Solved after a hint", "shortcut": "h" },
+            { "key": "S", "label": "Needed the solution", "shortcut": "s" },
+            { "key": "U", "label": "Still unsolved", "shortcut": "u" }
+          ]
+        },
+        { "key": "minutes", "type": "duration", "label": "Minutes", "required": true },
+        {
+          "key": "key_idea",
+          "type": "short_text",
+          "label": "Key idea or error to watch",
+          "required": false,
+          "help": "Specific beats general: \"total distance ÷ total time, not the average of the speeds\"."
+        },
+        { "key": "did", "type": "long_text", "label": "What I did", "required": true },
+        { "key": "struggled", "type": "long_text", "label": "What I struggled with", "required": true },
+        {
+          "key": "reflection",
+          "type": "long_text",
+          "label": "Reflection",
+          "required": false,
+          "rotatingPrompts": [
+            "What was the key observation?",
+            "Why does that step work?",
+            "How could you check the answer?",
+            "What change would make this method stop working?"
+          ],
+          "rotateBy": "plan.session"
+        },
+        { "key": "notebook", "type": "photo", "label": "Notebook photo", "required": false }
+      ],
+      "metrics": [
+        {
+          "key": "independent_rate",
+          "type": "ratio",
+          "label": "Solved on my own",
+          "numerator": "outcomes.I",
+          "denominator": ["outcomes.I", "outcomes.H", "outcomes.S", "outcomes.U"],
+          "format": "percent",
+          "nullWhen": "denominator = 0 or plan.reading_only"
+        },
+        {
+          "key": "checklist_complete",
+          "type": "count_where",
+          "label": "Checklist complete",
+          "where": "all(checklist)"
+        },
+        { "key": "minutes_week", "type": "sum", "label": "Minutes", "field": "minutes", "period": "week" },
+        {
+          "key": "ideas_explained",
+          "type": "count_where",
+          "label": "Ideas explained",
+          "where": "checklist.explained",
+          "period": "week"
+        }
+      ],
+      "followups": {
+        "enabledFrom": ["outcomes.H", "outcomes.S", "outcomes.U"],
+        "labelHint": "p. 31 #4",
+        "defaultDueDays": 2
+      },
+      "pacingFlags": [
+        {
+          "key": "slow_down",
+          "label": "Slow down: address the gap",
+          "rule": "in a week, (H+S+U) > I, or most sessions needed hints",
+          "audience": "admin"
+        },
+        {
+          "key": "trim_repetition",
+          "label": "Consider trimming repetition",
+          "rule": "last 3 sessions each independent_rate >= 0.8 and checklist.explained",
+          "audience": "admin"
+        },
+        {
+          "key": "behind_plan",
+          "label": "Behind plan",
+          "rule": "2 or more past plan items with no entry",
+          "audience": "admin"
+        }
+      ]
+    },
+    {
+      "slug": "violin",
+      "name": "Violin",
+      "icon": "music",
+      "color": "rosin-amber",
+      "sort": 2,
+      "cadence": { "type": "daily" },
+      "field_version": 1,
+      "display": "inline_on_today_card",
+      "fields": [
+        { "key": "practiced", "type": "yes_no", "label": "Did you practice today?", "required": true },
+        {
+          "key": "focus",
+          "type": "short_text",
+          "label": "One specific thing you focused on",
+          "required": true,
+          "placeholder": "clean shift to 3rd position in bar 12",
+          "showIf": { "practiced": true }
+        }
+      ],
+      "metrics": [
+        { "key": "days_week", "type": "days_per_week", "label": "Practice days", "where": "practiced" },
+        { "key": "streak", "type": "streak", "label": "Streak", "where": "practiced" }
+      ]
+    }
+  ]
+}
