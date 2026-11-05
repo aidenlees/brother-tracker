@@ -45,3 +45,6 @@ desktop.ini
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
+
+# Playwright sessions for the fake local accounts
+e2e/.auth/

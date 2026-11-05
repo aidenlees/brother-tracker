@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { todayInNewYork } from './dates'
+import { longDateInNewYork, todayInNewYork } from './dates'
+
+describe('longDateInNewYork', () => {
+  it('names the New York day, not the UTC one', () => {
+    // 23:30 EST on Wednesday Nov 4 is already Thursday in UTC.
+    expect(longDateInNewYork(new Date('2026-11-05T04:30:00Z'))).toBe('Wednesday, November 4')
+  })
+})
 
 describe('todayInNewYork', () => {
   it('stays on the evening date when UTC has already rolled over', () => {

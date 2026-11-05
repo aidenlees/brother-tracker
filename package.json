@@ -15,7 +15,10 @@
     "lint": "eslint . && prettier --check . && node scripts/check-tokens.ts",
     "format": "prettier --write .",
     "test": "vitest run",
+    "e2e": "playwright test",
     "seed": "node scripts/seed.ts",
+    "env:local": "node scripts/local-env.ts",
+    "gen:types": "supabase gen types --lang typescript --schema public > src/lib/database.types.ts && prettier --write src/lib/database.types.ts",
     "check:tokens": "node scripts/check-tokens.ts",
     "check:secrets": "node scripts/check-secrets.ts src dist"
   },

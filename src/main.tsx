@@ -1,4 +1,5 @@
-import '@fontsource-variable/fraunces'
+// Weight and optical-size axes: large headings get Fraunces' display cut.
+import '@fontsource-variable/fraunces/opsz.css'
 import '@fontsource-variable/inter'
 import './index.css'
 

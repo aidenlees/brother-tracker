@@ -54,8 +54,10 @@ pnpm dev                 # http://localhost:5173/brother-tracker/
 supabase start           # local Postgres + Auth + Storage (Docker)
 supabase db reset        # all migrations + local seed (includes fake test users)
 supabase test db         # pgTAP RLS tests: must pass before any merge
+pnpm env:local           # write .env.local (URL + publishable key only) from the running local stack
+pnpm gen:types           # regenerate src/lib/database.types.ts after a migration
 pnpm test                # Vitest
-pnpm e2e                 # Playwright (dev server + local Supabase)
+pnpm e2e                 # Playwright (dev server + local Supabase); screenshots land in test-results/screens/
 pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/radii)
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
 pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
@@ -66,7 +68,7 @@ supabase db push         # apply migrations to the linked cloud project
 
 ```
 src/
-  app/            routes: today/, log/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/
+  app/            routes: today/, log/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
   trackers/       field registry, renderers, metric engine, Zod schema builder

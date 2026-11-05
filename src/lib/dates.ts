@@ -17,6 +17,16 @@ export function localDateIn(timeZone: string, now: Date): string {
   return `${part('year')}-${part('month')}-${part('day')}`
 }
 
+/** "Thursday, November 5" for the instant `now`, in New York. */
+export function longDateInNewYork(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TIME_ZONE,
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(now)
+}
+
 /** Today's date in New York. Never derive "today" from a UTC timestamp. */
 export function todayInNewYork(now: Date = new Date()): string {
   return localDateIn(APP_TIME_ZONE, now)
