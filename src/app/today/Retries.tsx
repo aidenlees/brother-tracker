@@ -49,16 +49,18 @@ export function Retries({
       </h3>
       <ul className="flex flex-col gap-2">
         {shown.map((f) => (
-          <li key={f.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span
-              className={
-                f.status === 'open' ? 'text-foreground' : 'text-muted-foreground line-through'
-              }
-            >
-              {f.label}
+          <li key={f.id} className="grid grid-cols-[1fr_auto] items-center gap-3">
+            <span className="flex flex-wrap items-baseline gap-x-3">
+              <span
+                className={
+                  f.status === 'open' ? 'text-foreground' : 'text-muted-foreground line-through'
+                }
+              >
+                {f.label}
+              </span>
+              <span className="text-sm text-muted-foreground">{dueLabel(f.due_date, today)}</span>
             </span>
-            <span className="text-sm text-muted-foreground">{dueLabel(f.due_date, today)}</span>
-            <span className="ml-auto flex items-center gap-1">
+            <span className="flex items-center gap-1">
               {f.status === 'open' ? (
                 <>
                   <Button

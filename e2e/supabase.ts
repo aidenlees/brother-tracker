@@ -1,5 +1,7 @@
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { createRequire } from 'node:module'
+import { dirname, join, resolve } from 'node:path'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { PASSWORD } from './accounts'
 
@@ -32,4 +34,23 @@ export async function signedInClient(email: string): Promise<SupabaseClient> {
 /** Where supabase-js keeps the session in the browser (its default name). */
 export function authStorageKey(): string {
   return `sb-${new URL(localEnv().url).hostname.split('.')[0] ?? 'local'}-auth-token`
+}
+
+/**
+ * Runs SQL as postgres on the LOCAL stack (the Supabase CLI targets it by default and
+ * this never passes --remote). Only for setting up states a user can't create, such as
+ * an entry that was logged more than 7 days ago.
+ */
+export function localSql(sql: string): void {
+  const root = resolve(import.meta.dirname, '..')
+  const cli = join(
+    dirname(createRequire(import.meta.url).resolve('supabase/package.json')),
+    'dist',
+    'supabase.js',
+  )
+  const result = spawnSync(process.execPath, [cli, 'db', 'query', sql], {
+    cwd: root,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout)
 }

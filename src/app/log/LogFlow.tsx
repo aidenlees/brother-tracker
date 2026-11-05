@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import type { EntryView, FollowupView } from '@/lib/outbox/overlay'
@@ -50,6 +51,7 @@ export function LogFlow({
   existingRetries,
   draft,
   today,
+  startDate,
 }: {
   tracker: Tracker
   plan: PlanItem | null
@@ -58,6 +60,8 @@ export function LogFlow({
   existingRetries: FollowupView[]
   draft: Draft
   today: string
+  /** The assignment's first day: nothing can be logged before it. */
+  startDate: string
 }) {
   const outbox = useOutbox()
   const navigate = useNavigate()
@@ -68,6 +72,8 @@ export function LogFlow({
   const [index, setIndex] = useState(draft.step)
   const [issue, setIssue] = useState<EntryIssue | null>(null)
   const [saving, setSaving] = useState(false)
+  /** The day the session was done: today, or earlier when logging late. */
+  const [date, setDate] = useState(draft.date)
 
   const rules = tracker.followups
   const [due, setDue] = useState(() => (rules ? defaultDue(rules, draft.date, today) : draft.date))
@@ -100,6 +106,7 @@ export function LogFlow({
       if (finished.current) return
       void saveDraft({
         ...draft,
+        date,
         data,
         followups: retries.filter((r) => r.label.trim() !== ''),
         step: at,
@@ -109,7 +116,7 @@ export function LogFlow({
     return () => {
       window.clearTimeout(timer)
     }
-  }, [draft, data, retries, at])
+  }, [draft, date, data, retries, at])
 
   /** The step's problem, if any, judged exactly as the database will judge it. */
   function problemWith(current: Step): EntryIssue | null {
@@ -172,7 +179,7 @@ export function LogFlow({
       await outbox.enqueue({
         kind: 'entry.update',
         id: existing.id,
-        patch: { data: result.data, field_version: tracker.field_version },
+        patch: { data: result.data, field_version: tracker.field_version, date },
       })
     } else {
       await outbox.enqueue({
@@ -182,7 +189,7 @@ export function LogFlow({
           assignment_id: draft.assignmentId,
           plan_item_id: draft.planItemId,
           field_version: tracker.field_version,
-          date: draft.date,
+          date,
           data: result.data,
           owner_id: outbox.userId,
         },
@@ -270,11 +277,37 @@ export function LogFlow({
           <TrackerIcon name={tracker.icon} className="size-4 self-center text-tracker" />
           {tracker.name}
           <span className="font-normal text-muted-foreground">
-            {[session, plan?.title, pages, plan ? null : formatDay(draft.date, 'long')]
+            {[session, plan?.title, pages, plan ? null : formatDay(date, 'long')]
               .filter(Boolean)
               .join(' · ')}
           </span>
         </h1>
+        {plan && (plan.date < today || existing) ? (
+          <label className="flex items-center gap-3 text-sm text-muted-foreground">
+            Done on
+            <Input
+              type="date"
+              value={date}
+              min={startDate}
+              max={today}
+              onChange={(e) => {
+                const next = e.target.value
+                if (!next || next < startDate || next > today) return
+                setDate(next)
+                if (rules) {
+                  const nextDue = defaultDue(rules, next, today)
+                  setDue(nextDue)
+                  setRetries((rows) =>
+                    rows.map((r) =>
+                      existingRetries.some((f) => f.id === r.id) ? r : { ...r, due_date: nextDue },
+                    ),
+                  )
+                }
+              }}
+              className="h-9 w-auto"
+            />
+          </label>
+        ) : null}
         <div className="flex items-center gap-3">
           <div
             className="h-1 flex-1 overflow-hidden rounded-sm bg-muted"

@@ -63,3 +63,13 @@ export async function planItemId(client: SupabaseClient, slug: string, session: 
   if (!item) throw new Error(`no session ${String(session)} in ${slug}`)
   return item.id
 }
+
+/** "Wednesday, November 4", as the app writes a date out in full. */
+export function longDay(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(`${iso}T00:00:00Z`))
+}

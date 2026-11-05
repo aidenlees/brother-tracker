@@ -164,7 +164,7 @@ test.describe('@log the math log flow', () => {
       await page.getByRole('button', { name: 'Next' }).click()
     }
     // The fixture logged 35 minutes; a re-run finds this test's last value instead.
-    const box = page.getByRole('textbox')
+    const box = page.getByRole('textbox', { name: 'Minutes' })
     await expect(box).toHaveValue(/^(35|40)$/)
     const minutes = (await box.inputValue()) === '40' ? 35 : 40
     await box.fill(String(minutes))

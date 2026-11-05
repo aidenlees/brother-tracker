@@ -13,6 +13,7 @@ import { streak } from '@/trackers/metrics/streak'
 import { logPath } from '../log/paths'
 import { InlineCheckIn } from './InlineCheckIn'
 import { PlanCard } from './PlanCard'
+import { RecentDays } from './RecentDays'
 import { Retries } from './Retries'
 import { SavedNote, TrackerCard } from './TrackerCard'
 
@@ -113,6 +114,15 @@ function AssignmentCard({
           today={today}
         />
       )}
+      {tracker.cadence.type === 'daily' && today >= assignment.start_date ? (
+        <RecentDays
+          assignmentId={assignment.id}
+          startDate={assignment.start_date}
+          tracker={tracker}
+          entries={entries}
+          today={today}
+        />
+      ) : null}
       {tracker.followups ? (
         <Retries
           rules={tracker.followups}

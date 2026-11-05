@@ -5,8 +5,16 @@ import { formatDay } from '@/lib/dates'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
 import type { Draft } from '@/lib/outbox/types'
 import type { Assignment } from '@/lib/student-data'
-import { itemsOn, nextItem, pageLabel, sessionLabel, type PlanItem } from '@/trackers/plan'
+import {
+  itemsOn,
+  missedItems,
+  nextItem,
+  pageLabel,
+  sessionLabel,
+  type PlanItem,
+} from '@/trackers/plan'
 import { logPath } from '../log/paths'
+import { Missed } from './Missed'
 import { SavedNote } from './TrackerCard'
 
 /** A plan-cadence tracker: today's session (or the next one), and whether it's logged. */
@@ -30,6 +38,14 @@ export function PlanCard({
   const todays = itemsOn(items, today)
   const next = nextItem(items, today)
   const entryFor = (item: PlanItem) => entries.find((e) => e.plan_item_id === item.id)
+  const logged = new Set(entries.flatMap((e) => (e.plan_item_id ? [e.plan_item_id] : [])))
+  const missed = (
+    <Missed
+      assignmentId={assignment.id}
+      items={missedItems(items, logged, today)}
+      drafts={drafts}
+    />
+  )
 
   if (todays.length > 0) {
     return (
@@ -44,6 +60,7 @@ export function PlanCard({
             href={logPath(assignment.id, { planItemId: item.id })}
           />
         ))}
+        {missed}
       </div>
     )
   }
@@ -66,6 +83,7 @@ export function PlanCard({
           <ItemText item={next} />
         </div>
       ) : null}
+      {missed}
     </div>
   )
 }

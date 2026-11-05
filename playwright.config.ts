@@ -16,7 +16,9 @@ export default defineConfig({
   testDir: 'e2e',
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // One at a time: the specs share the fake students' rows in the local database, so
+  // two files logging the same session at once would trip over each other.
+  workers: 1,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     // Relative paths only (page.goto('today')), so they stay under the base path.

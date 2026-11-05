@@ -111,6 +111,7 @@ export function LogPage() {
       existingRetries={existingRetries}
       draft={draft}
       today={today}
+      startDate={assignment.start_date}
     />
   )
 }
