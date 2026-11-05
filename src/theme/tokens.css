@@ -33,6 +33,9 @@
   --tracker-teal: light-dark(#1c6969, #80cdca);
   --tracker-brick: light-dark(#a0381f, #f29b85);
 
+  /* The current tracker's accent. A tracker's card sets it to var(--tracker-<color>). */
+  --tracker: var(--tracker-ink-blue);
+
   /* Type */
   --type-heading: 'Fraunces Variable', Georgia, serif;
   --type-ui: 'Inter Variable', system-ui, sans-serif;
@@ -58,6 +61,19 @@
   --radius-xl: 1rem;
 
   --spacing: 0.25rem;
+
+  /* The small check mark on save: a soft scale-in, skipped under reduced motion. */
+  --animate-check: check-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  @keyframes check-in {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
 }
 
 /* Semantic names (shadcn/ui conventions) mapped onto the palette. */
@@ -83,6 +99,7 @@
   --color-tracker-plum: var(--tracker-plum);
   --color-tracker-teal: var(--tracker-teal);
   --color-tracker-brick: var(--tracker-brick);
+  --color-tracker: var(--tracker);
 
   --font-heading: var(--type-heading);
   --font-sans: var(--type-ui);

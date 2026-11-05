@@ -41,6 +41,8 @@ for (const viewport of VIEWPORTS) {
             await expect(
               page.getByRole('heading', { level: 1, name: ACCOUNTS[role].landing }),
             ).toBeVisible()
+            // Wait for data, so the shot shows the screen rather than "Loading…".
+            await expect(page.getByRole('status')).toHaveCount(0)
             await page.screenshot({
               path: `test-results/screens/${role}-${viewport.name}-${theme}.png`,
               fullPage: true,
