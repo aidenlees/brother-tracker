@@ -14,6 +14,7 @@
 --   student2@example.test
 --     math    starts so that session 21 (a review session) is today. Session 20
 --             (yesterday) is logged, with one retry overdue and one not due yet.
+--     violin  starts in 3 days (a card before its start date).
 --
 -- Re-running it rebuilds the same picture: the two students' assignments (and so
 -- their entries and followups) are deleted first.
@@ -59,6 +60,7 @@ begin
   v_math := public.assign_tracker(v_student, 'singapore-math', v_today - v_offset_6);
   v_violin := public.assign_tracker(v_student, 'violin', v_today - 10);
   v_math2 := public.assign_tracker(v_student2, 'singapore-math', v_today - v_offset_21);
+  perform public.assign_tracker(v_student2, 'violin', v_today + 3);
 
   -- student: session 5, logged two days ago, with a retry due today.
   select id, date into v_item from public.plan_items
