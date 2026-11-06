@@ -45,7 +45,11 @@ test.describe('@backfill late logs and locked entries', () => {
     page,
   }) => {
     await page.goto('today')
-    const missed = card(page, 'Singapore Math').getByRole('region', { name: 'Not logged yet' })
+    const math = card(page, 'Singapore Math')
+    const missed = math.getByRole('region', { name: '4 earlier sessions to log' })
+    // Folded under one line until opened.
+    await expect(missed.getByRole('listitem')).toHaveCount(0)
+    await missed.getByText('4 earlier sessions to log').click()
     await expect(missed.getByRole('listitem')).toHaveCount(4)
     await expect(missed.getByRole('listitem').first()).toContainText('Session 1')
 
@@ -75,7 +79,7 @@ test.describe('@backfill late logs and locked entries', () => {
         (await entriesOn(client, 'singapore-math', yesterday)).map((e) => e.plan_item_id),
       )
       .toEqual([await planItemId(client, 'singapore-math', 1)])
-    await expect(missed.getByRole('listitem')).toHaveCount(3)
+    await expect(math.getByRole('region', { name: '3 earlier sessions to log' })).toBeVisible()
   })
 
   test('the violin week strip logs a day that was missed', async ({ page }) => {

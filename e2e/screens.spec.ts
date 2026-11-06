@@ -109,6 +109,15 @@ for (const viewport of VIEWPORTS) {
           ).setFiles({ name: 'notebook.png', mimeType: 'image/png', buffer: PNG })
           await expect(page.getByRole('img', { name: 'Notebook photo, as added' })).toBeVisible()
           await shot(page, 'log-9-photo')
+
+          // Saved: the card shows the check mark and what comes next.
+          await page.getByRole('button', { name: 'Save' }).click()
+          const card = page.getByRole('region', { name: 'Singapore Math', exact: true })
+          await expect(card.getByText('· Synced')).toBeVisible({ timeout: 20_000 })
+          await expect(card.getByRole('region', { name: /^Next: / })).toBeVisible()
+          await settled(page)
+          await shot(page, 'today-math-saved')
+          await clearEntries(client, 'singapore-math', todayNY())
         })
 
         test('Today: saved on this device, then synced', async ({ page, context }) => {

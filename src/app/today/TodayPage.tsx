@@ -10,9 +10,11 @@ import { useDrafts } from '@/lib/outbox/use-drafts'
 import { useStudentData, type Assignment, type StudentData } from '@/lib/student-data'
 import { useToday } from '@/lib/use-today'
 import { streak } from '@/trackers/metrics/streak'
+import { missedItems } from '@/trackers/plan'
 import { dailyWeek, planWeek, streakLine } from '@/trackers/week'
 import { logPath } from '../log/paths'
 import { InlineCheckIn } from './InlineCheckIn'
+import { Missed } from './Missed'
 import { PlanCard } from './PlanCard'
 import { Retries } from './Retries'
 import { SavedNote, TrackerCard } from './TrackerCard'
@@ -124,6 +126,17 @@ function AssignmentCard({
             (item) => item.assignment_id === assignment.id && item.date === today,
           )}
           today={today}
+        />
+      ) : null}
+      {cadence === 'plan' ? (
+        <Missed
+          assignmentId={assignment.id}
+          items={missedItems(
+            items,
+            new Set(entries.flatMap((e) => (e.plan_item_id ? [e.plan_item_id] : []))),
+            today,
+          )}
+          drafts={drafts}
         />
       ) : null}
       {today >= assignment.start_date ? (
