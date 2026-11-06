@@ -124,6 +124,9 @@ export const TrackersFile = z.strictObject({
 
 const isoDate = z.iso.date()
 
+/** "p. 31 #4", or a lettered part, "p. 15 #2(e)". */
+export const PROBLEM_LABEL = /^p\. \d+ #\d+(\([a-z]\))?$/
+
 export const PlanSession = z.strictObject({
   session: z.int().min(1),
   week: z.int().min(1),
@@ -135,6 +138,15 @@ export const PlanSession = z.strictObject({
   page_end: z.int().nullable(),
   kind: z.enum(['study', 'practice', 'review', 'mixed_check']),
   reading_only: z.boolean(),
+  /**
+   * The problems to do, one per problem or lettered part, named by the page they're
+   * printed on ("p. 31 #4", "p. 15 #2(e)"). The math log lists them as checkboxes.
+   */
+  problems: z
+    .array(z.string().regex(PROBLEM_LABEL, 'problems look like "p. 31 #4" or "p. 15 #2(e)"'))
+    .min(1)
+    .refine((labels) => new Set(labels).size === labels.length, 'each problem is listed once')
+    .optional(),
 })
 export type PlanSession = z.infer<typeof PlanSession>
 
