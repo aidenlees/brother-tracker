@@ -8,7 +8,10 @@ import { useOutbox } from '@/lib/outbox/outbox-context'
 import { cn } from '@/lib/utils'
 import { homeFor, navFor } from './nav'
 
-/** The signed-in frame: name, the screens this role can use, where saves are, and sign out. */
+/**
+ * The signed-in frame, in the same column as every screen: the wordmark, who's signed in
+ * and sign out on top; the screens this role can use and where saves are below.
+ */
 export function Shell({
   profile,
   offline,
@@ -29,42 +32,50 @@ export function Shell({
         Skip to content
       </a>
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-8 gap-y-1 px-6 pt-4 md:h-16 md:flex-nowrap md:pt-0">
-          <Link to={homeFor(profile.role)} className="font-heading text-lead text-foreground">
-            Practice tracker
-          </Link>
-          <div className="ml-auto flex items-center gap-3 md:order-last">
-            {profile.role === 'student' ? <SyncStatus offline={offline} /> : null}
+        <div className="mx-auto max-w-2xl px-6">
+          <div className="flex items-center gap-4 pt-4">
+            <Link
+              to={homeFor(profile.role)}
+              className="mr-auto font-heading text-lead text-foreground"
+            >
+              Practice tracker
+            </Link>
             <span className="text-small text-muted-foreground">{profile.display_name}</span>
             <SignOut onSignOut={onSignOut} />
           </div>
-          <nav
-            aria-label="Main"
-            className="-mx-6 w-[calc(100%+3rem)] overflow-x-auto px-6 md:mx-0 md:w-auto md:overflow-visible md:px-0"
-          >
-            <ul className="flex gap-6 text-small">
-              {screens.map((screen) => (
-                <li key={screen.path}>
-                  <NavLink
-                    to={`/${screen.path}`}
-                    className={({ isActive }) =>
-                      cn(
-                        'inline-block border-b-2 py-3 whitespace-nowrap transition-colors md:py-5',
-                        isActive
-                          ? 'border-foreground text-foreground'
-                          : 'border-transparent text-muted-foreground hover:text-foreground',
-                      )
-                    }
-                  >
-                    {screen.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          {/* When the status doesn't fit beside the tabs it wraps above them, so the active
+              tab's underline always sits on the header's rule. */}
+          <div className="flex flex-wrap-reverse items-center justify-between gap-x-6">
+            <nav aria-label="Main" className="min-w-0 overflow-x-auto">
+              <ul className="flex gap-6 text-small">
+                {screens.map((screen) => (
+                  <li key={screen.path}>
+                    <NavLink
+                      to={`/${screen.path}`}
+                      className={({ isActive }) =>
+                        cn(
+                          'inline-block border-b-2 py-3 whitespace-nowrap transition-colors',
+                          isActive
+                            ? 'border-foreground text-foreground'
+                            : 'border-transparent text-muted-foreground hover:text-foreground',
+                        )
+                      }
+                    >
+                      {screen.label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            {profile.role === 'student' ? (
+              <div className="flex min-h-11 items-center">
+                <SyncStatus offline={offline} />
+              </div>
+            ) : null}
+          </div>
         </div>
       </header>
-      <main id="main" className="mx-auto max-w-5xl px-6 py-12">
+      <main id="main" className="mx-auto max-w-2xl px-6 pt-10 pb-16">
         <Suspense
           fallback={
             <p role="status" className="text-muted-foreground">

@@ -42,7 +42,7 @@ export function Retries({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-3 border-t border-border pt-5"
+      className="flex flex-col gap-3 border-t border-border pt-6"
     >
       <h3 id={headingId} className="text-body text-foreground">
         {review ? 'Every open retry, for today’s review' : 'Retries due'}

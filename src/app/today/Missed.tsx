@@ -48,7 +48,7 @@ export function Missed({
   return (
     <section
       aria-label="Not logged yet"
-      className="flex flex-col gap-3 border-t border-border pt-5"
+      className="flex flex-col gap-3 border-t border-border pt-6"
     >
       <h3 className="text-body text-foreground">Not logged yet</h3>
       <ul className="flex flex-col gap-3">{items.slice(0, SHOWN).map(row)}</ul>

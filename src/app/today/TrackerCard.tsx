@@ -24,7 +24,7 @@ export function TrackerCard({
     <section
       aria-labelledby={headingId}
       style={{ '--tracker': `var(--tracker-${color})` } as CSSProperties}
-      className="flex flex-col gap-5 rounded-lg border border-l-[3px] border-border border-l-tracker bg-card p-6"
+      className="flex flex-col gap-6 rounded-lg border border-border bg-card p-5 sm:p-6"
     >
       <header className="flex items-center gap-3">
         <TrackerIcon name={icon} className="size-5 shrink-0 text-tracker" />

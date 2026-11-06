@@ -36,7 +36,7 @@ export function TodayPage() {
       ) : data.assignments.length === 0 ? (
         <EmptyNote>Your trackers will show up here once your admin assigns them.</EmptyNote>
       ) : (
-        <div className="flex max-w-2xl flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {data.assignments.map((assignment) => (
             <AssignmentCard
               key={assignment.id}

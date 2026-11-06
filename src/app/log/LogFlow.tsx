@@ -266,7 +266,7 @@ export function LogFlow({
   return (
     <div
       style={{ '--tracker': `var(--tracker-${tracker.color})` } as CSSProperties}
-      className="flex max-w-xl flex-col gap-8"
+      className="flex flex-col gap-8"
     >
       <header className="flex flex-col gap-3">
         <Link
@@ -400,7 +400,7 @@ export function LogFlow({
 
       <nav data-flow-nav aria-label="Steps" className="flex items-center gap-3">
         {at > 0 ? (
-          <Button type="button" variant="outline" onClick={back}>
+          <Button type="button" variant="outline" size="lg" onClick={back}>
             <ArrowLeft aria-hidden />
             Back
           </Button>
