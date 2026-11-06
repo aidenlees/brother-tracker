@@ -107,7 +107,7 @@ export function InlineCheckIn({
             .filter((field) => saved[field.key] !== undefined)
             .map((field) => (
               <div key={field.key} className="flex flex-col">
-                <dt className="text-sm text-muted-foreground">{field.label}</dt>
+                <dt className="text-small text-muted-foreground">{field.label}</dt>
                 <dd className="text-foreground">
                   {FIELD_REGISTRY[field.type].summary(saved[field.key], field)}
                 </dd>
@@ -174,7 +174,7 @@ export function InlineCheckIn({
               placeholder={promptFor(field, null)}
             />
             {issue ? (
-              <p id={`${labelId}-problem`} className="text-sm text-destructive">
+              <p id={`${labelId}-problem`} className="text-small text-destructive">
                 {issue.message}
               </p>
             ) : null}

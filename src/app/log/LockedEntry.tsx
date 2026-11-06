@@ -35,7 +35,7 @@ export function LockedEntry({
       <dl className="flex max-w-xl flex-col gap-4">
         {fields.map((field) => (
           <div key={field.key} className="flex flex-col gap-1">
-            <dt className="text-sm text-muted-foreground">{field.label}</dt>
+            <dt className="text-small text-muted-foreground">{field.label}</dt>
             <dd className="whitespace-pre-line text-foreground">
               {FIELD_REGISTRY[field.type].summary(entry.data[field.key], field)}
             </dd>

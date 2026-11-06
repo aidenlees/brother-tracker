@@ -5,18 +5,16 @@ import { cn } from '@/lib/utils'
 import type { TrackerAccent } from '@/theme/accents'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
 
-/** One tracker on Today: its accent, icon and name, a streak if it keeps one, and its body. */
+/** One tracker on Today: its accent, icon and name, and its body. */
 export function TrackerCard({
   name,
   icon,
   color,
-  aside,
   children,
 }: {
   name: string
   icon: string
   color: TrackerAccent
-  aside?: ReactNode
   children: ReactNode
 }) {
   const headingId = useId()
@@ -24,18 +22,13 @@ export function TrackerCard({
     <section
       aria-labelledby={headingId}
       style={{ '--tracker': `var(--tracker-${color})` } as CSSProperties}
-      className="flex flex-col gap-5 rounded-lg border border-l-[3px] border-border border-l-tracker bg-card p-6"
+      className="flex flex-col gap-6 rounded-lg border border-border bg-card p-5 sm:p-6"
     >
       <header className="flex items-center gap-3">
         <TrackerIcon name={icon} className="size-5 shrink-0 text-tracker" />
-        <h2 id={headingId} className="text-2xl leading-tight text-foreground">
+        <h2 id={headingId} className="font-heading text-title text-foreground">
           {name}
         </h2>
-        {aside ? (
-          <p className="ml-auto text-sm whitespace-nowrap text-muted-foreground tabular-nums">
-            {aside}
-          </p>
-        ) : null}
       </header>
       {children}
     </section>
@@ -55,14 +48,14 @@ export function SavedNote({
 }) {
   if (sync === 'parked') {
     return (
-      <p className="flex items-start gap-2 text-sm text-destructive">
+      <p className="flex items-start gap-2 text-small text-destructive">
         <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
         <span>Couldn’t sync. {reason}</span>
       </p>
     )
   }
   return (
-    <p className="flex items-center gap-2 text-sm text-foreground">
+    <p className="flex items-center gap-2 text-small text-foreground">
       <Check aria-hidden className={cn('size-4 text-tracker', fresh && 'animate-check')} />
       <span>Saved</span>
       <span className="text-muted-foreground">

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ACCOUNTS, PASSWORD, signIn } from './accounts'
 import { clearEntries, entriesOn, todayNY } from './data'
+import { keptOnDevice } from './device'
 import { signedInClient } from './supabase'
 
 /**
@@ -37,6 +38,7 @@ test.describe('the installed app', () => {
     await page.waitForFunction('navigator.serviceWorker.controller !== null')
 
     await expect(math).toBeVisible()
+    await keptOnDevice(page)
     await context.setOffline(true)
     await page.reload()
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
@@ -64,6 +66,7 @@ test.describe('the installed app', () => {
     await page.reload()
     await page.waitForFunction('navigator.serviceWorker.controller !== null')
     await expect(violin).toBeVisible()
+    await keptOnDevice(page)
 
     await context.setOffline(true)
     await page.reload()

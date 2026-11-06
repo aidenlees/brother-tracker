@@ -31,7 +31,7 @@ export function ChoiceRow({
     <label
       className={cn(
         'flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-input bg-card px-4 py-2.5',
-        'text-base text-foreground transition-colors hover:bg-muted',
+        'text-body text-foreground transition-colors hover:bg-muted',
         'has-[:checked]:border-foreground has-[:focus-visible]:outline-2',
         'has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
       )}
@@ -48,7 +48,7 @@ export function ChoiceRow({
         className="size-5 shrink-0 accent-foreground focus-visible:outline-none"
       />
       <span>{label}</span>
-      {hint ? <span className="ml-auto text-sm text-muted-foreground">{hint}</span> : null}
+      {hint ? <span className="ml-auto text-small text-muted-foreground">{hint}</span> : null}
     </label>
   )
 }
@@ -103,7 +103,7 @@ export function Segmented({
           <span
             className={cn(
               'flex h-11 min-w-16 cursor-pointer items-center justify-center rounded-md border border-input',
-              'bg-card px-5 text-base font-medium text-foreground transition-[transform,background-color]',
+              'bg-card px-5 text-body font-medium text-foreground transition-[transform,background-color]',
               'duration-150 select-none hover:bg-muted active:scale-[0.97]',
               'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground',
               'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring',
@@ -169,7 +169,7 @@ export function NumberBox({
         aria-invalid={invalid || undefined}
         autoFocus={autoFocus}
         placeholder={placeholder}
-        className={cn('w-28 text-lg tabular-nums', className)}
+        className={cn('w-28 text-lead tabular-nums', className)}
       />
       {suffix ? <span className="text-muted-foreground">{suffix}</span> : null}
     </div>

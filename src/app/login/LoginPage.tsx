@@ -27,7 +27,7 @@ export function LoginPage() {
     <main className="flex min-h-dvh items-start justify-center px-6 py-16 sm:items-center">
       {/* The margin rule of a notebook's first page. */}
       <div className="w-full max-w-sm border-l-2 border-tracker-ink-blue/60 pl-6 sm:pl-10">
-        <h1 className="text-4xl leading-tight text-foreground sm:text-5xl">Practice tracker</h1>
+        <h1 className="font-heading text-display text-foreground">Practice tracker</h1>
         {auth.status === 'needs-code' ? (
           <CodeForm onVerify={auth.verifyCode} onCancel={auth.signOut} />
         ) : (
@@ -124,7 +124,7 @@ function PasswordForm({
         <Button type="submit" size="lg" disabled={busy}>
           {pending ? 'Signing in…' : 'Sign in'}
         </Button>
-        <p className="text-sm text-muted-foreground">Forgot it? Ask your admin to reset it.</p>
+        <p className="text-small text-muted-foreground">Forgot it? Ask your admin to reset it.</p>
       </div>
     </form>
   )
@@ -158,7 +158,7 @@ function CodeForm({
             maxLength={6}
             required
             autoFocus
-            className="max-w-40 text-lg tracking-widest tabular-nums"
+            className="max-w-40 text-lead tracking-widest tabular-nums"
             value={code}
             onChange={(e) => {
               setCode(e.target.value.replace(/\D/g, ''))
@@ -214,7 +214,7 @@ function ErrorText({ message }: { message: string | null }) {
         {message}
       </p>
       {message ? (
-        <p id="form-error" aria-hidden="true" className="text-sm text-destructive">
+        <p id="form-error" aria-hidden="true" className="text-small text-destructive">
           {message}
         </p>
       ) : null}

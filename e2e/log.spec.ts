@@ -79,6 +79,10 @@ test.describe('@log the math log flow', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     const math = page.getByRole('region', { name: 'Singapore Math' })
     await expect(math.getByText('· Synced')).toBeVisible()
+    // With today's session saved, the card shows what comes next.
+    const next = math.getByRole('region', { name: /^Next: / })
+    await expect(next).toContainText('Session 7 · Solve by Assuming')
+    await expect(next).toContainText('Practice pp. 33-34')
 
     const client = await signedInClient(ACCOUNTS.student.email)
     const [entry] = await entriesOn(client, 'singapore-math', todayNY())
@@ -138,7 +142,7 @@ test.describe('@log the math log flow', () => {
     await page.getByRole('button', { name: 'Back' }).click()
     await expect(page.getByText('2 problems')).toBeVisible()
 
-    await page.getByRole('link', { name: 'Today (your answers are kept)' }).click()
+    await page.getByRole('link', { name: 'Back to Today' }).click()
     await expect(page.getByRole('link', { name: 'Resume logging' })).toBeVisible()
   })
 

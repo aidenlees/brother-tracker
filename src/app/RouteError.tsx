@@ -20,7 +20,7 @@ export function RouteError() {
   const missing = isMissingChunk(error)
   return (
     <section role="alert" className="flex max-w-xl flex-col gap-4">
-      <h1 className="text-3xl text-foreground">
+      <h1 className="font-heading text-display text-foreground">
         {missing ? 'This screen isn’t on this device yet' : 'Something went wrong'}
       </h1>
       <p className="text-muted-foreground">

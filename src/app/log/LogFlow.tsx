@@ -266,27 +266,34 @@ export function LogFlow({
   return (
     <div
       style={{ '--tracker': `var(--tracker-${tracker.color})` } as CSSProperties}
-      className="flex max-w-xl flex-col gap-8"
+      className="flex flex-col gap-8"
     >
-      <header className="flex flex-col gap-3">
-        <Link
-          to="/today"
-          className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          Today (your answers are kept)
-        </Link>
-        <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-sans font-medium text-foreground">
-          <TrackerIcon name={tracker.icon} className="size-4 self-center text-tracker" />
-          {tracker.name}
-          <span className="font-normal text-muted-foreground">
-            {[session, plan?.title, pages, plan ? null : formatDay(date, 'long')]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        </h1>
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-small">
+          <Link
+            to="/today"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft aria-hidden className="size-4" />
+            Back to Today
+          </Link>
+          <p className="text-muted-foreground">Your answers are kept.</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <h1 className="flex flex-wrap items-center gap-x-2 text-small text-foreground">
+            <TrackerIcon name={tracker.icon} className="size-4 text-tracker" />
+            {tracker.name}{' '}
+            {session ? <span className="font-normal text-muted-foreground">{session}</span> : null}
+          </h1>
+          <p className="text-body text-foreground">
+            {plan ? plan.title : formatDay(date, 'long')}{' '}
+            {pages ? (
+              <span className="ml-2 text-small text-muted-foreground tabular-nums">{pages}</span>
+            ) : null}
+          </p>
+        </div>
         {plan && (plan.date < today || existing) ? (
-          <label className="flex items-center gap-3 text-sm text-muted-foreground">
+          <label className="flex items-center gap-3 text-small text-muted-foreground">
             Done on
             <Input
               type="date"
@@ -325,7 +332,7 @@ export function LogFlow({
               style={{ width: `${((at + 1) / steps.length) * 100}%` }}
             />
           </div>
-          <p className="text-sm text-muted-foreground tabular-nums">
+          <p className="text-small text-muted-foreground tabular-nums">
             {at + 1} of {steps.length}
           </p>
         </div>
@@ -333,12 +340,14 @@ export function LogFlow({
 
       <section aria-labelledby={labelId} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <h2 id={labelId} className="text-3xl leading-tight text-foreground">
+          <h2 id={labelId} className="font-heading text-display text-foreground">
             {title}
             {optional ? (
               <>
-                {' '}
-                <span className="ml-1 font-sans text-base text-muted-foreground">optional</span>
+                {/* Only the space before it: wrapped onto its own line, it starts flush. */}{' '}
+                <span className="inline-block font-sans text-small font-normal text-muted-foreground">
+                  optional
+                </span>
               </>
             ) : null}
           </h2>
@@ -398,7 +407,7 @@ export function LogFlow({
 
       <nav data-flow-nav aria-label="Steps" className="flex items-center gap-3">
         {at > 0 ? (
-          <Button type="button" variant="outline" onClick={back}>
+          <Button type="button" variant="outline" size="lg" onClick={back}>
             <ArrowLeft aria-hidden />
             Back
           </Button>
@@ -417,7 +426,7 @@ export function LogFlow({
           )}
         </Button>
         {/* Keyboard hints are for laptops; a phone keyboard has its own Next. */}
-        <p className="hidden text-sm text-muted-foreground sm:block">
+        <p className="hidden text-small text-muted-foreground sm:block">
           <kbd className="font-sans">Enter</kbd>
           {field?.type === 'long_text' ? ' · Shift+Enter for a new line' : null}
         </p>

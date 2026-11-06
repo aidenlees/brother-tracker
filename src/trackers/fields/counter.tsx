@@ -31,7 +31,7 @@ function Counter({ field, value, onChange, labelId, describedBy, autoFocus }: Fi
       >
         <Minus aria-hidden />
       </Button>
-      <output aria-live="polite" className="min-w-12 text-center text-2xl tabular-nums">
+      <output aria-live="polite" className="min-w-12 text-center text-title tabular-nums">
         {count}
       </output>
       <Button

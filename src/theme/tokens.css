@@ -49,11 +49,32 @@
   color-scheme: dark;
 }
 
-/* Remove Tailwind's default palette and shadows so components can only use tokens. */
+/* Remove Tailwind's default palette, shadows and type sizes so components can only use tokens. */
 @theme {
   --color-*: initial;
   --shadow-*: initial;
   --radius-*: initial;
+  --text-*: initial;
+
+  /*
+   * Type: six sizes, each with one job. Fraunces (font-heading) only for the page title,
+   * a tracker's name, the question on a log step, dialog titles and the wordmark; Inter
+   * for everything else. Weights 400 and 500 only (check:tokens holds both lines).
+   */
+  --text-display: 2.25rem; /* the page title; the question a log step asks */
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.015em;
+  --text-title: 1.5rem; /* a tracker's name */
+  --text-title--line-height: 1.25;
+  --text-title--letter-spacing: -0.01em;
+  --text-lead: 1.125rem; /* the main line of a card: today's session */
+  --text-lead--line-height: 1.45;
+  --text-body: 1rem; /* answers, rows, buttons that lead */
+  --text-body--line-height: 1.5;
+  --text-small: 0.875rem; /* details under a line, section headings, hints, buttons in a row */
+  --text-small--line-height: 1.45;
+  --text-caption: 0.75rem; /* weekday names in the 7-day strip */
+  --text-caption--line-height: 1.35;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -112,12 +133,11 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* A heading's look comes from its role (font-heading + a size), not its level. */
   h1,
   h2,
   h3 {
-    font-family: var(--font-heading);
     font-weight: 500;
-    letter-spacing: -0.01em;
   }
 
   :focus-visible {

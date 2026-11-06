@@ -17,12 +17,12 @@ export function Page({
   }, [title])
 
   return (
-    <section aria-labelledby="page-title" className="flex flex-col gap-6">
-      <header className="flex flex-col gap-2">
-        <h1 id="page-title" className="text-4xl leading-tight text-foreground">
+    <section aria-labelledby="page-title" className="flex flex-col gap-8">
+      <header className="flex flex-col gap-1">
+        <h1 id="page-title" className="font-heading text-display text-foreground">
           {title}
         </h1>
-        {lead ? <p className="text-lg text-muted-foreground">{lead}</p> : null}
+        {lead ? <p className="text-body text-muted-foreground">{lead}</p> : null}
       </header>
       {children}
     </section>

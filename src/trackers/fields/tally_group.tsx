@@ -126,7 +126,17 @@ function TallyGroup({
         {options.map((option, index) => {
           const count = counts[option.key] ?? 0
           return (
-            <div key={option.key} className="flex items-stretch gap-1">
+            // One tile per option: the count and label add one; the − inside its right
+            // edge takes one away. The whole tile gives the soft press.
+            <div
+              key={option.key}
+              data-pressed={pressed === option.key || undefined}
+              className={cn(
+                'flex min-h-16 items-stretch rounded-lg border border-input bg-card',
+                'transition-transform duration-150 has-[button:first-child:active]:scale-[0.98]',
+                'data-pressed:scale-[0.98]',
+              )}
+            >
               <button
                 ref={index === 0 ? first : undefined}
                 type="button"
@@ -137,34 +147,35 @@ function TallyGroup({
                 aria-keyshortcuts={option.shortcut}
                 data-pressed={pressed === option.key || undefined}
                 className={cn(
-                  'flex min-h-16 flex-1 items-center gap-4 rounded-lg border border-input bg-card px-4 py-3',
-                  'text-left transition-[transform,background-color] duration-150 select-none hover:bg-muted',
-                  'active:scale-[0.97] data-pressed:scale-[0.97] data-pressed:bg-muted',
+                  'flex flex-1 items-center gap-4 rounded-l-lg px-4 py-3 text-left select-none',
+                  'transition-colors duration-150 hover:bg-muted data-pressed:bg-muted',
                 )}
               >
-                <span className="min-w-10 text-3xl font-medium tabular-nums">{count}</span>
+                <span className="min-w-8 text-title font-medium tabular-nums">{count}</span>
                 <span className="flex flex-col">
-                  <span className="text-base text-foreground">{option.label}</span>
+                  <span className="text-body text-foreground">{option.label}</span>
                   {option.shortcut ? (
-                    <kbd className="font-sans text-sm text-muted-foreground">
+                    <kbd className="font-sans text-small text-muted-foreground">
                       {option.key} · key {option.shortcut}
                     </kbd>
                   ) : null}
                 </span>
               </button>
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-auto w-10 text-muted-foreground"
                 onClick={() => {
                   remove(option.key)
                 }}
                 disabled={count === 0}
                 aria-label={`${option.label}: remove one`}
+                className={cn(
+                  'flex w-11 shrink-0 items-center justify-center rounded-r-lg border-l border-border',
+                  'text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                  'disabled:pointer-events-none disabled:opacity-40',
+                )}
               >
-                <Minus aria-hidden />
-              </Button>
+                <Minus aria-hidden className="size-4" />
+              </button>
             </div>
           )
         })}

@@ -64,7 +64,7 @@ pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' ass
 pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview); screenshots land in test-results/screens/
 pnpm e2e --grep @pace    # the student-speed timing test: math log under 2 min, violin check-in about 10 s (also runs in pnpm e2e)
 pnpm e2e --project=pwa   # installed-app tests only: manifest, service worker, offline reload
-pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/radii)
+pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/sizes/radii)
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
 supabase db push         # apply migrations to the linked cloud project
 
@@ -78,7 +78,7 @@ src/
   app/            routes: today/, log/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
-  trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, metrics
+  trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, the last 7 days (week.ts), metrics
   lib/            supabase client, auth (offline-safe), query cache, offline outbox (drafts, ops, photos, sync), date utils
 supabase/
   migrations/     timestamped SQL; never edit an applied migration, add a new one
@@ -246,7 +246,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 | Screen | Who | Notes |
 |---|---|---|
-| Today | student | One card per active assignment: today's plan item, due followups, streak. Inline trackers are logged on the card. |
+| Today | student | One card per active assignment, top to bottom: today's plan item (or the inline check-in; after saving, what's next), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
 | Log session | student | One step per screen; autosaves to IndexedDB; works offline; tally keys `i h s u`, Backspace undoes |
 | My week | student | Streaks and "solved on my own". Never a grade; no pacing flags. |
 | Overview | admin, viewer | Person picker (viewer: linked students only); per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
@@ -262,16 +262,19 @@ Navigation shows only the screens a role can use.
 
 ## Design rules ("studio notebook")
 
-- **Tokens.** Everything visual comes from `src/theme/tokens.css`, as CSS variables for both themes. Components never hard-code colours, fonts or radii.
+- **Tokens.** Everything visual comes from `src/theme/tokens.css`, as CSS variables for both themes. Components never hard-code colours, fonts, sizes or radii (`pnpm check:tokens`).
 - **Palette.**
   - Warm paper background (`#FAF7F2`-ish), ink text (`#1F2328`-ish).
   - One accent per tracker: math ink blue, violin rosin amber. New trackers pick from 6 accents that pass AA in both themes.
   - Real dark mode, not inversion.
-- **Type.** Fraunces for headings, Inter for UI, tabular numerals on stats.
+- **Type.** Fraunces (`font-heading`) only for the page title, a tracker's name, the question on a log step, dialog titles and the wordmark. Inter for everything else; tabular numerals on stats.
+  - Six sizes, each with one job: `text-display` (page title, log question), `text-title` (tracker name), `text-lead` (a card's main line), `text-body` (answers, rows, a card's section headings), `text-small` (details under a line, labels, hints), `text-caption` (the 7-day strip). A new size goes in tokens.css and in `TYPE_SIZES` (`src/lib/utils.ts`, so `cn()` keeps it); a test checks they match.
+  - Weights 400 and 500 only. Sentence case; no all-caps labels.
+- **Layout.** One 42rem column for the header and the content, at every width. Spacing comes from 4/8/12/16/24/32/48 px: 24 inside a card and between its sections, 32 from a page's heading to its content, 16 between cards.
 - **Feel.**
   - Generous space, rounded-lg cards, hairline borders; no heavy shadows or gradients.
   - A soft press on each tally, a small check mark on save.
-  - No gamification.
+  - No gamification. Consistency is shown, not rewarded: the last 7 days on every Today card (done, still to log, rest day), the streak as a plain sentence ("4 days in a row. Today makes 5."), and what's next once today is saved. Missed sessions are a to-do folded under one line, never "behind".
 - **Charts.** Quiet gridlines, direct labels, one highlighted series. A null is a gap. Every chart gets a text summary for screen readers.
 - **Access.** AA contrast, full keyboard use, visible focus, `prefers-reduced-motion` respected.
 - **Copy.** Short, second person, specific ("Your table made the pattern clear"), never generic praise.
