@@ -22,6 +22,7 @@ export const FIELD_TYPES = [
   'page_range',
   'yes_no',
   'photo',
+  'plan_checklist',
 ] as const
 export type FieldTypeName = (typeof FIELD_TYPES)[number]
 
@@ -64,8 +65,16 @@ export const FieldDefinition = z.strictObject({
   rotateBy: z.string().optional(),
   /** Prefills a new entry from the plan item, e.g. "plan.assignment". The student can edit it. */
   default: planRef.optional(),
+  /**
+   * A plan_checklist's items, read from the plan item ("plan.problems"). The field is
+   * hidden on a plan item whose list is missing or empty.
+   */
+  optionsFrom: planRef.optional(),
 })
 export type FieldDefinition = z.infer<typeof FieldDefinition>
+
+/** A plan item's details (session, kind, reading_only, pages...), or null for daily entries. */
+export type PlanDetails = Readonly<Record<string, unknown>> | null
 
 /** Metric rules are evaluated by the metric engine (Phase 3); stored as given. */
 export const MetricDefinition = z.looseObject({

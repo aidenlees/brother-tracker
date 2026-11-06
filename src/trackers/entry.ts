@@ -9,11 +9,10 @@
  * text counts as blank here, where SQL's btrim only strips spaces.
  */
 import { z } from 'zod'
-import type { FieldDefinition } from './definition'
+import type { FieldDefinition, PlanDetails } from './definition'
 import { FIELD_REGISTRY } from './fields/registry'
 
-/** A plan item's details (session, kind, reading_only, pages...), or null for daily entries. */
-export type PlanDetails = Readonly<Record<string, unknown>> | null
+export type { PlanDetails } from './definition'
 export type EntryData = Record<string, unknown>
 export type EntryIssue = { key: string; message: string }
 export type CleanResult = { ok: true; data: EntryData } | { ok: false; issues: EntryIssue[] }
@@ -27,17 +26,21 @@ export function planValue(ref: string, plan: PlanDetails): unknown {
 
 /**
  * showIf: every key must equal its value (SQL: `is not distinct from` on jsonb). A key
- * that is missing, null or an object never matches a condition's plain value.
+ * that is missing, null or an object never matches a condition's plain value. A field
+ * with optionsFrom also needs its list on the plan item, with at least one item.
  */
 export function isShown(field: FieldDefinition, data: EntryData, plan: PlanDetails): boolean {
   return shownIn(field, new Map(Object.entries(data)), plan)
 }
 
 function shownIn(field: FieldDefinition, data: Map<string, unknown>, plan: PlanDetails): boolean {
-  return Object.entries(field.showIf ?? {}).every(([key, expected]) => {
+  const conditions = Object.entries(field.showIf ?? {}).every(([key, expected]) => {
     const actual = key.startsWith(PLAN_PREFIX) ? planValue(key, plan) : data.get(key)
     return actual === expected
   })
+  if (!conditions || field.optionsFrom === undefined) return conditions
+  const list = planValue(field.optionsFrom, plan)
+  return Array.isArray(list) && list.length > 0
 }
 
 /** Missing, null, or text with nothing but whitespace. */
@@ -80,7 +83,7 @@ export function cleanEntry(
       data.delete(field.key)
       continue
     }
-    const result = FIELD_REGISTRY[field.type].schema(field).safeParse(value)
+    const result = FIELD_REGISTRY[field.type].schema(field, plan).safeParse(value)
     if (result.success) {
       data.set(field.key, result.data)
     } else {

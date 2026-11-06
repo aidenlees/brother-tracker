@@ -185,8 +185,11 @@ function buildParitySql(): string {
     '-- Field types: the same values public.field_check_<type> must accept and refuse.',
   )
   for (const type of FIELD_TYPES) {
-    const { field, valid, invalid } = TYPE_FIXTURES[type]
-    const call = (value: unknown) => `public.field_check_${type}(${jsonb(value)}, ${jsonb(field)})`
+    const { field, plan, valid, invalid } = TYPE_FIXTURES[type]
+    // The trigger hands each check the plan item as field -> 'plan'; the fixture does too.
+    const asCalled = plan === undefined ? field : { ...field, plan }
+    const call = (value: unknown) =>
+      `public.field_check_${type}(${jsonb(value)}, ${jsonb(asCalled)})`
     for (const value of valid) {
       test(
         `select is(${call(value)}, null, ${literal(`${type} accepts ${describeValue(value)}`)});`,
@@ -279,8 +282,8 @@ describe('field type fixtures', () => {
   })
 
   for (const type of FIELD_TYPES) {
-    const { field, valid, invalid } = TYPE_FIXTURES[type]
-    const schema = FIELD_REGISTRY[type].schema(field)
+    const { field, plan, valid, invalid } = TYPE_FIXTURES[type]
+    const schema = FIELD_REGISTRY[type].schema(field, plan ?? null)
     it(`${type}: Zod accepts the valid values and refuses the rest`, () => {
       for (const value of valid)
         expect(schema.safeParse(value).success, describeValue(value)).toBe(true)

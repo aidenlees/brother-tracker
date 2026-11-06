@@ -6,7 +6,7 @@
 -- must agree, or the offline outbox would hold entries the server refuses.
 begin;
 \ir _helpers.psql
-select plan(104);
+select plan(114);
 
 -- Field types: the same values public.field_check_<type> must accept and refuse.
 select is(public.field_check_number('0'::jsonb, '{"key":"value","type":"number","label":"Value","required":false,"min":0,"max":10}'::jsonb), null, 'number accepts 0');
@@ -93,6 +93,16 @@ select is(public.field_check_photo('"0f8fad5b-d9cb-469f-a165-70867728950e"'::jso
 select isnt(public.field_check_photo('"0F8FAD5B-D9CB-469F-A165-70867728950E"'::jsonb, '{"key":"value","type":"photo","label":"Value","required":false}'::jsonb), null, 'photo refuses "0F8FAD5B-D9CB-469F-A165-70867728950E"');
 select isnt(public.field_check_photo('"not-a-photo"'::jsonb, '{"key":"value","type":"photo","label":"Value","required":false}'::jsonb), null, 'photo refuses "not-a-photo"');
 select isnt(public.field_check_photo('5'::jsonb, '{"key":"value","type":"photo","label":"Value","required":false}'::jsonb), null, 'photo refuses 5');
+select is(public.field_check_plan_checklist('[]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist accepts []');
+select is(public.field_check_plan_checklist('["p. 31 #4"]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist accepts ["p. 31 #4"]');
+select is(public.field_check_plan_checklist('["p. 31 #3","p. 32 #5(a)"]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist accepts ["p. 31 #3","p. 32 #5(a)"]');
+select isnt(public.field_check_plan_checklist('["p. 33 #7"]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses ["p. 33 #7"]');
+select isnt(public.field_check_plan_checklist('["p. 31 #4","p. 31 #4"]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses ["p. 31 #4","p. 31 #4"]');
+select isnt(public.field_check_plan_checklist('"p. 31 #4"'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses "p. 31 #4"');
+select isnt(public.field_check_plan_checklist('[4]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses [4]');
+select isnt(public.field_check_plan_checklist('{}'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses {}');
+select isnt(public.field_check_plan_checklist('["P. 31 #4"]'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses ["P. 31 #4"]');
+select isnt(public.field_check_plan_checklist('true'::jsonb, '{"key":"value","type":"plan_checklist","label":"Value","required":false,"optionsFrom":"plan.problems","plan":{"problems":["p. 31 #3","p. 31 #4","p. 32 #5(a)"]}}'::jsonb), null, 'plan_checklist refuses true');
 
 -- Entries for the launch trackers, with their fields from seed/trackers.json. The data
 -- goes in as the browser holds it and must be stored exactly as cleanEntry tidies it.

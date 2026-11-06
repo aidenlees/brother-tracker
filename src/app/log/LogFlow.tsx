@@ -373,6 +373,7 @@ export function LogFlow({
             hotkeys
             onSubmit={next}
             placeholder={field.rotatingPrompts ? '' : undefined}
+            plan={details}
           />
         ) : rules ? (
           <RetryStep
