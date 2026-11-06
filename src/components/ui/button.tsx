@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ' +
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-small font-medium ' +
     'transition-[transform,background-color,color] duration-150 active:scale-[0.98] ' +
     'disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0',
   {
@@ -18,7 +18,7 @@ const buttonVariants = cva(
       size: {
         default: 'h-10 px-4',
         sm: 'h-9 px-3',
-        lg: 'h-11 px-6 text-base',
+        lg: 'h-11 px-6 text-body',
         icon: 'size-10',
       },
     },

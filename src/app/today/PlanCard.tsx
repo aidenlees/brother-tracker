@@ -77,7 +77,7 @@ export function PlanCard({
       </p>
       {next ? (
         <div className="flex flex-col gap-1 border-l-2 border-border pl-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-small text-muted-foreground">
             {before ? 'First' : 'Next'}: {formatDay(next.date, 'long')}
           </p>
           <ItemText item={next} />
@@ -93,8 +93,8 @@ function ItemText({ item }: { item: PlanItem }) {
   const pages = pageLabel(item.details)
   return (
     <div className="flex flex-col gap-1">
-      {session ? <p className="text-sm text-muted-foreground">{session}</p> : null}
-      <p className="text-xl leading-snug text-foreground">{item.title}</p>
+      {session ? <p className="text-small text-muted-foreground">{session}</p> : null}
+      <p className="text-lead text-foreground">{item.title}</p>
       {pages ? <p className="text-muted-foreground tabular-nums">{pages}</p> : null}
     </div>
   )

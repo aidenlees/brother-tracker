@@ -26,7 +26,7 @@ export function SyncStatus({ offline: signedInOffline }: { offline: boolean }) {
   const offline = signedInOffline || outbox.offline
 
   return (
-    <div className="flex items-center gap-3 text-sm" aria-live="polite">
+    <div className="flex items-center gap-3 text-small" aria-live="polite">
       {outbox.parked.length > 0 ? (
         <details className="relative">
           <summary className="flex cursor-pointer list-none items-center gap-1.5 text-destructive">

@@ -271,12 +271,12 @@ export function LogFlow({
       <header className="flex flex-col gap-3">
         <Link
           to="/today"
-          className="flex items-center gap-1.5 self-start text-sm text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1.5 self-start text-small text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft aria-hidden className="size-4" />
           Today (your answers are kept)
         </Link>
-        <h1 className="flex flex-wrap items-baseline gap-x-2 text-base font-sans font-medium text-foreground">
+        <h1 className="flex flex-wrap items-baseline gap-x-2 text-body text-foreground">
           <TrackerIcon name={tracker.icon} className="size-4 self-center text-tracker" />
           {tracker.name}
           <span className="font-normal text-muted-foreground">
@@ -286,7 +286,7 @@ export function LogFlow({
           </span>
         </h1>
         {plan && (plan.date < today || existing) ? (
-          <label className="flex items-center gap-3 text-sm text-muted-foreground">
+          <label className="flex items-center gap-3 text-small text-muted-foreground">
             Done on
             <Input
               type="date"
@@ -325,7 +325,7 @@ export function LogFlow({
               style={{ width: `${((at + 1) / steps.length) * 100}%` }}
             />
           </div>
-          <p className="text-sm text-muted-foreground tabular-nums">
+          <p className="text-small text-muted-foreground tabular-nums">
             {at + 1} of {steps.length}
           </p>
         </div>
@@ -333,12 +333,14 @@ export function LogFlow({
 
       <section aria-labelledby={labelId} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <h2 id={labelId} className="text-3xl leading-tight text-foreground">
+          <h2 id={labelId} className="font-heading text-display text-foreground">
             {title}
             {optional ? (
               <>
                 {' '}
-                <span className="ml-1 font-sans text-base text-muted-foreground">optional</span>
+                <span className="ml-1 font-sans text-small font-normal text-muted-foreground">
+                  optional
+                </span>
               </>
             ) : null}
           </h2>
@@ -417,7 +419,7 @@ export function LogFlow({
           )}
         </Button>
         {/* Keyboard hints are for laptops; a phone keyboard has its own Next. */}
-        <p className="hidden text-sm text-muted-foreground sm:block">
+        <p className="hidden text-small text-muted-foreground sm:block">
           <kbd className="font-sans">Enter</kbd>
           {field?.type === 'long_text' ? ' · Shift+Enter for a new line' : null}
         </p>

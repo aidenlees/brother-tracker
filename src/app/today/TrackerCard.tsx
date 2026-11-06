@@ -28,11 +28,11 @@ export function TrackerCard({
     >
       <header className="flex items-center gap-3">
         <TrackerIcon name={icon} className="size-5 shrink-0 text-tracker" />
-        <h2 id={headingId} className="text-2xl leading-tight text-foreground">
+        <h2 id={headingId} className="font-heading text-title text-foreground">
           {name}
         </h2>
         {aside ? (
-          <p className="ml-auto text-sm whitespace-nowrap text-muted-foreground tabular-nums">
+          <p className="ml-auto text-small whitespace-nowrap text-muted-foreground tabular-nums">
             {aside}
           </p>
         ) : null}
@@ -55,14 +55,14 @@ export function SavedNote({
 }) {
   if (sync === 'parked') {
     return (
-      <p className="flex items-start gap-2 text-sm text-destructive">
+      <p className="flex items-start gap-2 text-small text-destructive">
         <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
         <span>Couldn’t sync. {reason}</span>
       </p>
     )
   }
   return (
-    <p className="flex items-center gap-2 text-sm text-foreground">
+    <p className="flex items-center gap-2 text-small text-foreground">
       <Check aria-hidden className={cn('size-4 text-tracker', fresh && 'animate-check')} />
       <span>Saved</span>
       <span className="text-muted-foreground">

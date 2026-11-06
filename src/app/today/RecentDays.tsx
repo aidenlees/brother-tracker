@@ -40,7 +40,7 @@ export function RecentDays({
           const cell = (
             <span
               className={cn(
-                'flex h-14 flex-col items-center justify-center gap-1 rounded-md border text-xs',
+                'flex h-14 flex-col items-center justify-center gap-1 rounded-md border text-caption',
                 entry && done(entry)
                   ? 'border-tracker text-foreground'
                   : 'border-input text-muted-foreground',

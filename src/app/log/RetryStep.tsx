@@ -41,7 +41,7 @@ export function RetryStep({
       <ol aria-labelledby={labelId} aria-describedby={describedBy} className="flex flex-col gap-2">
         {rows.map((row, index) => (
           <li key={row.id} className="flex items-center gap-2">
-            <span className="w-6 text-right text-sm text-muted-foreground tabular-nums">
+            <span className="w-6 text-right text-small text-muted-foreground tabular-nums">
               {index + 1}.
             </span>
             <Input

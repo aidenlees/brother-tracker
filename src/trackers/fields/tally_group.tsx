@@ -142,11 +142,11 @@ function TallyGroup({
                   'active:scale-[0.97] data-pressed:scale-[0.97] data-pressed:bg-muted',
                 )}
               >
-                <span className="min-w-10 text-3xl font-medium tabular-nums">{count}</span>
+                <span className="min-w-10 text-title font-medium tabular-nums">{count}</span>
                 <span className="flex flex-col">
-                  <span className="text-base text-foreground">{option.label}</span>
+                  <span className="text-body text-foreground">{option.label}</span>
                   {option.shortcut ? (
-                    <kbd className="font-sans text-sm text-muted-foreground">
+                    <kbd className="font-sans text-small text-muted-foreground">
                       {option.key} · key {option.shortcut}
                     </kbd>
                   ) : null}

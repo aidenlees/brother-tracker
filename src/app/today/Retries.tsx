@@ -44,7 +44,7 @@ export function Retries({
       aria-labelledby={headingId}
       className="flex flex-col gap-3 border-t border-border pt-5"
     >
-      <h3 id={headingId} className="font-sans text-base font-medium text-foreground">
+      <h3 id={headingId} className="text-body text-foreground">
         {review ? 'Every open retry, for today’s review' : 'Retries due'}
       </h3>
       <ul className="flex flex-col gap-2">
@@ -58,7 +58,9 @@ export function Retries({
               >
                 {f.label}
               </span>
-              <span className="text-sm text-muted-foreground">{dueLabel(f.due_date, today)}</span>
+              <span className="text-small text-muted-foreground">
+                {dueLabel(f.due_date, today)}
+              </span>
             </span>
             <span className="flex items-center gap-1">
               {f.status === 'open' ? (
@@ -83,7 +85,7 @@ export function Retries({
                 </>
               ) : (
                 <>
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-small text-muted-foreground">
                     {f.status === 'done' ? 'Done' : 'Dropped'}
                   </span>
                   <Button

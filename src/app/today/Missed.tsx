@@ -28,7 +28,7 @@ export function Missed({
     return (
       <li key={item.id} className="grid grid-cols-[1fr_auto] items-center gap-3">
         <span className="flex flex-col">
-          <span className="text-sm text-muted-foreground">
+          <span className="text-small text-muted-foreground">
             {[formatDay(item.date), session].filter(Boolean).join(' · ')}
           </span>
           <span className="text-foreground">{item.title}</span>
@@ -50,11 +50,11 @@ export function Missed({
       aria-label="Not logged yet"
       className="flex flex-col gap-3 border-t border-border pt-5"
     >
-      <h3 className="font-sans text-base font-medium text-foreground">Not logged yet</h3>
+      <h3 className="text-body text-foreground">Not logged yet</h3>
       <ul className="flex flex-col gap-3">{items.slice(0, SHOWN).map(row)}</ul>
       {rest.length > 0 ? (
         <details className="flex flex-col gap-3">
-          <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+          <summary className="cursor-pointer text-small text-muted-foreground hover:text-foreground">
             {rest.length === 1 ? '1 more' : `${rest.length} more`}
           </summary>
           <ul className="mt-3 flex flex-col gap-3">{rest.map(row)}</ul>

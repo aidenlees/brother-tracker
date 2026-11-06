@@ -30,19 +30,19 @@ export function Shell({
       </a>
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-8 gap-y-1 px-6 pt-4 md:h-16 md:flex-nowrap md:pt-0">
-          <Link to={homeFor(profile.role)} className="font-heading text-xl text-foreground">
+          <Link to={homeFor(profile.role)} className="font-heading text-lead text-foreground">
             Practice tracker
           </Link>
           <div className="ml-auto flex items-center gap-3 md:order-last">
             {profile.role === 'student' ? <SyncStatus offline={offline} /> : null}
-            <span className="text-sm text-muted-foreground">{profile.display_name}</span>
+            <span className="text-small text-muted-foreground">{profile.display_name}</span>
             <SignOut onSignOut={onSignOut} />
           </div>
           <nav
             aria-label="Main"
             className="-mx-6 w-[calc(100%+3rem)] overflow-x-auto px-6 md:mx-0 md:w-auto md:overflow-visible md:px-0"
           >
-            <ul className="flex gap-6 text-sm">
+            <ul className="flex gap-6 text-small">
               {screens.map((screen) => (
                 <li key={screen.path}>
                   <NavLink
@@ -100,7 +100,7 @@ function SignOut({ onSignOut }: { onSignOut: () => void }) {
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 bg-foreground/30" />
         <AlertDialog.Content className="fixed top-1/2 left-1/2 flex w-[min(28rem,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-lg border border-border bg-card p-6 text-foreground">
-          <AlertDialog.Title className="font-heading text-2xl">Sign out now?</AlertDialog.Title>
+          <AlertDialog.Title className="font-heading text-title">Sign out now?</AlertDialog.Title>
           <AlertDialog.Description className="text-muted-foreground">
             {unsynced === 1 ? '1 change hasn’t' : `${unsynced} changes haven’t`} reached the server
             yet. They stay on this device and sync the next time you sign in here.
