@@ -10,12 +10,13 @@ import { useDrafts } from '@/lib/outbox/use-drafts'
 import { useStudentData, type Assignment, type StudentData } from '@/lib/student-data'
 import { useToday } from '@/lib/use-today'
 import { streak } from '@/trackers/metrics/streak'
+import { dailyWeek, planWeek, streakLine } from '@/trackers/week'
 import { logPath } from '../log/paths'
 import { InlineCheckIn } from './InlineCheckIn'
 import { PlanCard } from './PlanCard'
-import { RecentDays } from './RecentDays'
 import { Retries } from './Retries'
 import { SavedNote, TrackerCard } from './TrackerCard'
+import { WeekStrip } from './WeekStrip'
 
 /** Today answers one question: what do I log today? One card per active assignment. */
 export function TodayPage() {
@@ -78,20 +79,21 @@ function AssignmentCard({
   }
 
   const entries = data.entries.filter((e) => e.assignment_id === assignment.id)
+  const items = data.planItems.filter((item) => item.assignment_id === assignment.id)
   const metric = tracker.metrics.find((m) => m.type === 'streak')
-  const run = metric ? streak(entries, metric.where, today) : null
+  const cadence = tracker.cadence.type
+  const days =
+    cadence === 'plan'
+      ? planWeek(items, entries, assignment.start_date, today)
+      : dailyWeek(entries, metric?.where, assignment.start_date, today)
+  const line = metric ? streakLine(streak(entries, metric.where, today), days.at(-1)?.state) : null
 
   return (
-    <TrackerCard
-      name={tracker.name}
-      icon={tracker.icon}
-      color={tracker.color}
-      aside={metric && run ? `${metric.label} · ${run === 1 ? '1 day' : `${run} days`}` : null}
-    >
-      {tracker.cadence.type === 'plan' ? (
+    <TrackerCard name={tracker.name} icon={tracker.icon} color={tracker.color}>
+      {cadence === 'plan' ? (
         <PlanCard
           assignment={assignment}
-          items={data.planItems.filter((item) => item.assignment_id === assignment.id)}
+          items={items}
           entries={entries}
           drafts={drafts}
           savedId={savedId}
@@ -114,15 +116,6 @@ function AssignmentCard({
           today={today}
         />
       )}
-      {tracker.cadence.type === 'daily' && today >= assignment.start_date ? (
-        <RecentDays
-          assignmentId={assignment.id}
-          startDate={assignment.start_date}
-          tracker={tracker}
-          entries={entries}
-          today={today}
-        />
-      ) : null}
       {tracker.followups ? (
         <Retries
           rules={tracker.followups}
@@ -130,6 +123,15 @@ function AssignmentCard({
           todaysItems={data.planItems.filter(
             (item) => item.assignment_id === assignment.id && item.date === today,
           )}
+          today={today}
+        />
+      ) : null}
+      {today >= assignment.start_date ? (
+        <WeekStrip
+          assignmentId={assignment.id}
+          cadence={cadence}
+          days={days}
+          line={line}
           today={today}
         />
       ) : null}

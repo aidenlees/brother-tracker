@@ -81,7 +81,7 @@ test.describe('@backfill late logs and locked entries', () => {
   test('the violin week strip logs a day that was missed', async ({ page }) => {
     await page.goto('today')
     const yesterday = addDays(todayNY(), -1)
-    const week = card(page, 'Violin').getByRole('navigation', { name: 'This week' })
+    const week = card(page, 'Violin').getByRole('navigation', { name: 'Last 7 days' })
     await expect(week.getByRole('link')).toHaveCount(7)
     await week.getByRole('link', { name: `${longDay(yesterday)}: Not logged` }).click()
 

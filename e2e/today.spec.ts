@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ACCOUNTS, authFile } from './accounts'
-import { clearEntries, entriesOn, todayNY } from './data'
+import { clearEntries, entriesOn, longDay, todayNY } from './data'
 import { signedInClient } from './supabase'
 
 /**
@@ -27,6 +27,18 @@ test.describe('@today the math card', () => {
       /\/log\/[0-9a-f-]{36}\/[0-9a-f-]{36}$/,
     )
   })
+
+  test('the last 7 days show today’s session still to log, and link to it', async ({ page }) => {
+    await page.goto('today')
+    const math = card(page, 'Singapore Math')
+    const week = math.getByRole('navigation', { name: 'Last 7 days' })
+    const todays = week.getByRole('link', { name: `${longDay(todayNY())}: Session not logged` })
+    await expect(todays).toHaveAttribute('aria-current', 'date')
+    const logHref = await math.getByRole('link', { name: 'Log this session' }).getAttribute('href')
+    expect(await todays.getAttribute('href')).toBe(logHref)
+    // Days without a session are marked, not linked.
+    await expect(week.getByRole('img', { name: /: No session$/ })).not.toHaveCount(0)
+  })
 })
 
 test.describe('@violin the inline check-in', () => {
@@ -48,7 +60,7 @@ test.describe('@violin the inline check-in', () => {
 
     await expect(violin.getByText('clean shift to 3rd position')).toBeVisible()
     await expect(violin.getByText('· Synced')).toBeVisible()
-    await expect(violin.getByText('Streak · 1 day')).toBeVisible()
+    await expect(violin.getByText('1 day so far.', { exact: true })).toBeVisible()
 
     const client = await signedInClient(ACCOUNTS.student.email)
     await expect

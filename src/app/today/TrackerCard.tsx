@@ -5,18 +5,16 @@ import { cn } from '@/lib/utils'
 import type { TrackerAccent } from '@/theme/accents'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
 
-/** One tracker on Today: its accent, icon and name, a streak if it keeps one, and its body. */
+/** One tracker on Today: its accent, icon and name, and its body. */
 export function TrackerCard({
   name,
   icon,
   color,
-  aside,
   children,
 }: {
   name: string
   icon: string
   color: TrackerAccent
-  aside?: ReactNode
   children: ReactNode
 }) {
   const headingId = useId()
@@ -31,11 +29,6 @@ export function TrackerCard({
         <h2 id={headingId} className="font-heading text-title text-foreground">
           {name}
         </h2>
-        {aside ? (
-          <p className="ml-auto text-small whitespace-nowrap text-muted-foreground tabular-nums">
-            {aside}
-          </p>
-        ) : null}
       </header>
       {children}
     </section>
