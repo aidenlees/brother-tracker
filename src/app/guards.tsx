@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { useAuth } from '@/lib/auth-context'
+import { OutboxProvider } from '@/lib/outbox/OutboxProvider'
 import { canUse, homeFor } from './nav'
 import { Shell } from './Shell'
 
-function Loading() {
+export function Loading() {
   return (
     <p role="status" className="p-12 text-muted-foreground">
       Loading…
@@ -21,12 +22,15 @@ export function SignedIn() {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
   return (
-    <Shell
-      profile={auth.profile}
-      onSignOut={() => {
-        void auth.signOut()
-      }}
-    />
+    <OutboxProvider userId={auth.profile.id} canSync={auth.session !== null}>
+      <Shell
+        profile={auth.profile}
+        offline={auth.offline}
+        onSignOut={() => {
+          void auth.signOut()
+        }}
+      />
+    </OutboxProvider>
   )
 }
 

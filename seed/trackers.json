@@ -44,7 +44,13 @@
           "required": false,
           "help": "Specific beats general: \"total distance ÷ total time, not the average of the speeds\"."
         },
-        { "key": "did", "type": "long_text", "label": "What I did", "required": true },
+        {
+          "key": "did",
+          "type": "long_text",
+          "label": "What I did",
+          "required": true,
+          "default": "plan.assignment"
+        },
         { "key": "struggled", "type": "long_text", "label": "What I struggled with", "required": true },
         {
           "key": "reflection",
@@ -89,7 +95,8 @@
       "followups": {
         "enabledFrom": ["outcomes.H", "outcomes.S", "outcomes.U"],
         "labelHint": "p. 31 #4",
-        "defaultDueDays": 2
+        "defaultDueDays": 2,
+        "listAllOpenWhen": { "plan.kind": ["review", "mixed_check"] }
       },
       "pacingFlags": [
         {

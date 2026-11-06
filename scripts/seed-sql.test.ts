@@ -50,6 +50,21 @@ describe('buildSeedSql', () => {
     expect(sql).toContain('"details":{"session":80,')
   })
 
+  it('copies the PDF offset into items that have pages, and only those', () => {
+    const items = math.sessions.length
+    const withPages = math.sessions.filter((s) => s.page_start !== null).length
+    expect(math.pdf_offset).toBe(2)
+    expect(withPages).toBeLessThan(items)
+    expect(sql.match(/"pdf_offset":2/g)).toHaveLength(withPages)
+    // Session 80 has no pages.
+    expect(sql).toMatch(/"session":80,[^}]*"reading_only":false\}/)
+  })
+
+  it('carries the prefill and review-session rules as tracker data', () => {
+    expect(sql).toContain('"default":"plan.assignment"')
+    expect(sql).toContain('"listAllOpenWhen":{"plan.kind":["review","mixed_check"]}')
+  })
+
   it('escapes single quotes', () => {
     // The math checklist label is "Today's checklist".
     expect(sql).toContain("Today''s checklist")

@@ -27,7 +27,7 @@ select is((
 select tests.as_anon();
 select throws_ok('select count(*) from public.entries', '42501', null,
   'anon cannot read entries');
-select throws_ok('select public.role()', '42501', null,
+select throws_ok('select private.role()', '42501', null,
   'anon cannot call the role helper');
 select throws_ok($$select public.assign_tracker(gen_random_uuid(), 'test-daily', current_date)$$,
   '42501', null, 'anon cannot call assign_tracker');
@@ -36,7 +36,7 @@ reset role;
 select is((
   select count(*)::int
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public'
+  where n.nspname = 'private'
     and p.proname in ('role', 'is_admin', 'can_see', 'admin_mfa_ok', 'admin_can_write')
     and p.prosecdef and p.provolatile = 's'
     and p.proconfig @> array['search_path=""']
@@ -49,7 +49,7 @@ select is((
 ), null, 'anon cannot execute any security definer function in public');
 
 select tests.authenticate_as('noprofile');
-select is(public.role(), null, 'a signed-in user without a profile has no role');
+select is(private.role(), null, 'a signed-in user without a profile has no role');
 select is((select count(*)::int from public.trackers), 0, '... and reads no trackers');
 reset role;
 

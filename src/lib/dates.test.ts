@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { longDateInNewYork, todayInNewYork } from './dates'
+import { addDays, daysBetween, formatDay, longDateInNewYork, todayInNewYork } from './dates'
 
 describe('longDateInNewYork', () => {
   it('names the New York day, not the UTC one', () => {
@@ -30,5 +30,25 @@ describe('todayInNewYork', () => {
 
   it('pads month and day', () => {
     expect(todayInNewYork(new Date('2027-01-05T17:00:00Z'))).toBe('2027-01-05')
+  })
+})
+
+describe('calendar dates', () => {
+  it('add days across month, year and daylight-saving changes', () => {
+    expect(addDays('2026-11-30', 1)).toBe('2026-12-01')
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+    expect(addDays('2026-11-01', 1)).toBe('2026-11-02')
+    expect(addDays('2027-03-14', -1)).toBe('2027-03-13')
+  })
+
+  it('count the days between two dates', () => {
+    expect(daysBetween('2026-11-01', '2026-11-08')).toBe(7)
+    expect(daysBetween('2026-11-08', '2026-11-01')).toBe(-7)
+    expect(daysBetween('2027-03-13', '2027-03-15')).toBe(2)
+  })
+
+  it('format a date as the day it names, whatever the machine’s zone', () => {
+    expect(formatDay('2026-11-10')).toBe('Tue, Nov 10')
+    expect(formatDay('2026-11-08', 'long')).toBe('Sunday, November 8')
   })
 })

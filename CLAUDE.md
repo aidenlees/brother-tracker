@@ -53,15 +53,22 @@ pnpm install
 pnpm dev                 # http://localhost:5173/brother-tracker/
 supabase start           # local Postgres + Auth + Storage (Docker)
 supabase db reset        # all migrations + local seed (includes fake test users)
-supabase test db         # pgTAP RLS tests: must pass before any merge
+supabase test db         # pgTAP RLS tests (and the Zod/SQL parity checks): must pass before any merge
 pnpm env:local           # write .env.local (URL + publishable key only) from the running local stack
 pnpm gen:types           # regenerate src/lib/database.types.ts after a migration
+pnpm gen:parity          # rewrite supabase/tests/database/13_field_parity.sql from the field fixtures (Vitest fails when it is stale)
+pnpm gen:icons           # app icons in public/ from public/favicon.svg (commit the results)
 pnpm test                # Vitest
-pnpm e2e                 # Playwright (dev server + local Supabase); screenshots land in test-results/screens/
+pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
+pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' assignments, entries and retries around today; after db reset + seed
+pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview); screenshots land in test-results/screens/
+pnpm e2e --grep @pace    # the student-speed timing test: math log under 2 min, violin check-in about 10 s (also runs in pnpm e2e)
+pnpm e2e --project=pwa   # installed-app tests only: manifest, service worker, offline reload
 pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/radii)
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
-pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
 supabase db push         # apply migrations to the linked cloud project
+
+# Before e2e on a fresh stack: supabase db reset && pnpm seed && pnpm e2e:fixtures && pnpm env:local
 ```
 
 ## Repo layout
@@ -71,8 +78,8 @@ src/
   app/            routes: today/, log/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
-  trackers/       field registry, renderers, metric engine, Zod schema builder
-  lib/            supabase client, auth, offline outbox, date utils
+  trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, metrics
+  lib/            supabase client, auth (offline-safe), query cache, offline outbox (drafts, ops, photos, sync), date utils
 supabase/
   migrations/     timestamped SQL; never edit an applied migration, add a new one
   functions/      admin-users, digest-email, push-reminders, calendar-sync, keep-alive
@@ -81,6 +88,8 @@ supabase/
 seed/
   trackers.json        launch tracker definitions
   math_sessions.json   80-session math plan (plan template source)
+scripts/               seed, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
+e2e/                   Playwright specs; supabase.ts talks to the local stack only
 .github/workflows/     ci.yml, deploy.yml, backup.yml
 ```
 
@@ -107,10 +116,10 @@ seed/
 ## Security rules (non-negotiable)
 
 1. **RLS on every table**, enabled in the migration that creates it. Automatic RLS is also on in the project, but never rely on it.
-2. **Helpers** (`security definer`, `stable`, `search_path` pinned; policies use them and trust nothing from the client):
-   - `public.role()` returns the caller's role from `profiles`.
-   - `public.is_admin()` is true for the admin.
-   - `public.can_see(student uuid)` is true when `auth.uid() = student`, the caller is admin, or a `viewer_links` row exists for the pair.
+2. **Helpers** (`security definer`, `stable`, `search_path` pinned; policies use them and trust nothing from the client) live in the `private` schema, which the Data API doesn't expose. No `security definer` function in an exposed schema may be executable by `anon` or `authenticated` (pgTAP enforces this).
+   - `private.role()` returns the caller's role from `profiles`.
+   - `private.is_admin()` is true for the admin.
+   - `private.can_see(student uuid)` is true when `auth.uid() = student`, the caller is admin, or a `viewer_links` row exists for the pair.
 3. **`entries`, `followups`, `attachments`:**
    - Insert only when `owner_id = auth.uid()`, `role() = 'student'`, and the referenced assignment's `student_id = auth.uid()`.
    - Update and delete: the same, plus `created_at > now() - interval '7 days'`.
@@ -201,15 +210,15 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 **Plan**
 - Template from `seed/math_sessions.json`: 80 sessions, Sun/Tue/Thu/Sat, first date 2026-11-01. Three Thursdays are already moved to Wednesday.
-- `details` carries `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind` and `reading_only`.
-- Pages are printed pages. Show "PDF +2" beside them.
+- `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind` and `reading_only`, plus `pdf_offset` on items that have pages.
+- Pages are printed pages. Show the PDF viewer pages beside them (printed + `pdf_offset`): "pp. 31–32 · PDF 33–34".
 
 **Fields**
 - `checklist`: attempted, checked, explained, retry_planned
 - `outcomes` tally: I / H / S / U, with keyboard shortcuts `i h s u`
 - `minutes`
 - `key_idea`
-- `did`, `struggled` (both required)
+- `did`, `struggled` (both required; `did` starts prefilled from the session's assignment)
 - `reflection`, with a prompt rotating by session
 - `notebook` photo (optional)
 
@@ -219,7 +228,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 - minutes per week
 - ideas explained per week
 
-**Followups:** from any H, S or U problem; label like `p. 31 #4`; due in 2 days. Review sessions list everything still open.
+**Followups:** from any H, S or U problem; label like `p. 31 #4`; due in 2 days. Review sessions (`kind` is `review` or `mixed_check`, set by `followups.listAllOpenWhen`) list everything still open.
 
 **Pacing flags** (admin only, never shown to students):
 - "Slow down": in a week, H+S+U > I
@@ -229,7 +238,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 ### `violin` (cadence: daily, `display: inline_on_today_card`)
 
 - `practiced` (yes/no), plus `focus` (short text, required when yes).
-- Metrics: days per week, streak, recent focus items.
+- Metrics: days per week, streak. Recent focus items are a list on Overview (Phase 3), not a metric.
 
 ---
 
@@ -287,14 +296,14 @@ No LLM API calls from this app.
 
 Mark the current phase when it changes.
 
-- [ ] **1. Foundation** ← current (branch `phase-1`)
+- [x] **1. Foundation** (done 2026-11-05, PR #1)
   - Builds: scaffold, full schema + helpers + RLS + audit, `assign_tracker`, pgTAP refusal tests, local fake-user seed, password login, role-based nav shell, `pnpm seed`, CI, Pages deploy.
   - *Done when:* every refusal in rule 11 is tested and failing correctly, the student's own write succeeds, and the site is live.
-- [ ] **2. Student MVP**
+- [ ] **2. Student MVP** ← current (branch `phase-2`)
   - Builds: Today, math log flow, violin inline check-in, followups, offline outbox, backfill for missed dates.
   - *Done when:* the student logs a real session on a laptop in under 2 minutes, unaided.
 - [ ] **3. Admin side + connectors**
-  - Builds: Overview, Struggles, comments, retry queue, plan editor, push, calendar, digest.
+  - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

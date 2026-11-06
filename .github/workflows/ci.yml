@@ -43,6 +43,8 @@ jobs:
         run: pnpm supabase db advisors --type all --fail-on warn
       - name: Seed trackers and plan templates
         run: pnpm seed
+      - name: Local test students around today (e2e fixtures)
+        run: pnpm e2e:fixtures
 
       - name: End-to-end tests
         run: |

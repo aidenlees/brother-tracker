@@ -9,7 +9,11 @@ export type AuthState =
   | { status: 'signed-out'; notice?: string }
   /** Password accepted; this account has TOTP and the session still needs the code. */
   | { status: 'needs-code'; session: Session }
-  | { status: 'signed-in'; session: Session; profile: SignedInProfile }
+  /**
+   * `offline`: the server can't be reached, so this is the profile it last confirmed on
+   * this device, and `session` may be null until the token can refresh.
+   */
+  | { status: 'signed-in'; session: Session | null; profile: SignedInProfile; offline: boolean }
 
 export type SignInResult = { ok: true } | { ok: false; message: string }
 
