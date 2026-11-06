@@ -142,7 +142,7 @@ test.describe('@log the math log flow', () => {
     await page.getByRole('button', { name: 'Back' }).click()
     await expect(page.getByText('2 problems')).toBeVisible()
 
-    await page.getByRole('link', { name: 'Today (your answers are kept)' }).click()
+    await page.getByRole('link', { name: 'Back to Today' }).click()
     await expect(page.getByRole('link', { name: 'Resume logging' })).toBeVisible()
   })
 
