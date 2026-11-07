@@ -6,7 +6,7 @@
  */
 import type { ComponentType } from 'react'
 import { z } from 'zod'
-import type { FieldDefinition } from '../definition'
+import type { FieldDefinition, PlanDetails } from '../definition'
 
 /** What every renderer receives. `value` is null until the student answers. */
 export type FieldProps<V> = {
@@ -25,11 +25,16 @@ export type FieldProps<V> = {
   hotkeys?: boolean
   /** Overrides field.placeholder, e.g. with the session's reflection prompt. */
   placeholder?: string
+  /** The plan item's details, for fields that read their options from it. */
+  plan?: PlanDetails
 }
 
 export type FieldType<V> = {
-  /** Accepts exactly what public.field_check_<type> accepts for a value that is present. */
-  schema: (field: FieldDefinition) => z.ZodType<V>
+  /**
+   * Accepts exactly what public.field_check_<type> accepts for a value that is present.
+   * `plan` is the entry's plan item (the trigger hands checks the same, as field -> 'plan').
+   */
+  schema: (field: FieldDefinition, plan: PlanDetails) => z.ZodType<V>
   /** The value a new entry starts with, before any plan default. */
   empty: (field: FieldDefinition) => V | null
   /** Plain text for lists, reviews and export. */
@@ -69,6 +74,19 @@ export function optionKeys(field: FieldDefinition): string[] {
 
 export function optionLabel(field: FieldDefinition, key: string): string {
   return field.options?.find((o) => o.key === key)?.label ?? key
+}
+
+/**
+ * The items a field lists from its plan item (optionsFrom), or null when it names no
+ * list or the plan item has none. Only strings count as items.
+ */
+export function planList(field: FieldDefinition, plan: PlanDetails): string[] | null {
+  const ref = field.optionsFrom
+  if (ref === undefined || !ref.startsWith('plan.')) return null
+  const list = plan?.[ref.slice('plan.'.length)]
+  return Array.isArray(list)
+    ? list.filter((item): item is string => typeof item === 'string')
+    : null
 }
 
 /** A plain JSON object (jsonb_typeof = 'object'), not an array or null. */

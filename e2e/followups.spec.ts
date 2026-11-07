@@ -37,52 +37,57 @@ test.describe('@followups retries', () => {
       await expect.poll(() => followupStatus(ACCOUNTS.student.email, 'p. 30 #2')).toEqual(['open'])
     })
 
-    test('adds retries in the log flow, one per line, due in two days', async ({ page }) => {
+    test('a problem checked as a struggle becomes a retry; unchecked on an edit, it is dropped', async ({
+      page,
+    }) => {
       const client = await signedInClient(ACCOUNTS.student.email)
       await clearEntries(client, 'singapore-math', todayNY())
+      const retries = async () => {
+        const [entry] = await entriesOn(client, 'singapore-math', todayNY())
+        if (!entry) return null
+        const { data } = await client
+          .from('followups')
+          .select('label, due_date, status')
+          .eq('entry_id', entry.id)
+          .order('label')
+        return data
+      }
+      const toggle = (label: string) =>
+        page.locator('label', { has: page.getByRole('checkbox', { name: label }) }).click()
+
       await page.goto('today')
       await page.getByRole('link', { name: 'Log this session' }).click()
       await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
-
-      await page.keyboard.press('Enter') // checklist as it is
-      await page.keyboard.type('iihu')
+      await page.keyboard.press('y')
       await page.keyboard.press('Enter')
-      await expect(page.getByRole('heading', { level: 2 })).toContainText('Problems to retry')
-      await expect(page.getByText('2 problems needed help.')).toBeVisible()
-      await page.keyboard.type('p. 31 #4')
+      await toggle('p. 31 #4')
+      await toggle('p. 32 #5')
       await page.keyboard.press('Enter')
-      await page.keyboard.type('p. 32 #1')
-      await page.keyboard.press('Enter')
-      await page.keyboard.press('Enter') // empty line: move on
-      await expect(page.getByRole('heading', { level: 2 })).toContainText('Minutes')
       await page.keyboard.type('30')
       await page.keyboard.press('Enter')
-      await page.keyboard.press('Enter') // key idea: skip
-      await page.keyboard.press('Enter') // what I did: as filled in
-      await page.keyboard.type('the second retry')
-      await page.keyboard.press('Enter')
-      await page.keyboard.press('Enter') // reflection: skip
-      await page.keyboard.press('Enter') // photo: skip, save
       await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
 
       // The outbox sends the entry first, then its retries.
-      await expect
-        .poll(async () => {
-          const [entry] = await entriesOn(client, 'singapore-math', todayNY())
-          if (!entry) return null
-          const { data } = await client
-            .from('followups')
-            .select('label, due_date, status')
-            .eq('entry_id', entry.id)
-            .order('label')
-          return data
-        })
-        .toEqual([
-          { label: 'p. 31 #4', due_date: addDays(todayNY(), 2), status: 'open' },
-          { label: 'p. 32 #1', due_date: addDays(todayNY(), 2), status: 'open' },
-        ])
+      const due = addDays(todayNY(), 2)
+      await expect.poll(retries).toEqual([
+        { label: 'p. 31 #4', due_date: due, status: 'open' },
+        { label: 'p. 32 #5', due_date: due, status: 'open' },
+      ])
       // Not due yet, so not on Today's list.
       await expect(page.getByText('p. 31 #4')).toHaveCount(0)
+
+      // Edit: p. 32 #5 turned out fine after all.
+      await card(page, 'Singapore Math').getByRole('link', { name: 'Edit' }).click()
+      await page.getByRole('button', { name: 'Next' }).click()
+      await expect(page.getByRole('checkbox', { name: 'p. 32 #5' })).toBeChecked()
+      await toggle('p. 32 #5')
+      await page.getByRole('button', { name: 'Next' }).click()
+      await page.getByRole('button', { name: 'Save' }).click()
+      await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+      await expect.poll(retries).toEqual([
+        { label: 'p. 31 #4', due_date: due, status: 'open' },
+        { label: 'p. 32 #5', due_date: due, status: 'dropped' },
+      ])
     })
   })
 
@@ -96,7 +101,7 @@ test.describe('@followups retries', () => {
       })
       await expect(list.getByRole('listitem')).toHaveText([
         /p\. 69 #11.*due yesterday/,
-        /p\. 70 #3.*due tomorrow/,
+        /p\. 70 #13.*due tomorrow/,
       ])
     })
   })

@@ -60,7 +60,6 @@ export type Draft = {
   editing: boolean
   fieldVersion: number
   data: Record<string, unknown>
-  followups: { id: string; label: string; due_date: string }[]
   step: number
   startedAt: string
   updatedAt: string

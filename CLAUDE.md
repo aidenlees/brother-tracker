@@ -87,7 +87,7 @@ supabase/
   seed.sql        LOCAL ONLY: fake users (student@example.test, admin@…, viewer@…, student2@…)
 seed/
   trackers.json        launch tracker definitions
-  math_sessions.json   80-session math plan (plan template source)
+  math_sessions.json   80-session math plan (plan template source), with each session's problem numbers (read once from the book, which stays out of the repo)
 scripts/               seed, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
 e2e/                   Playwright specs; supabase.ts talks to the local stack only
 .github/workflows/     ci.yml, deploy.yml, backup.yml
@@ -164,7 +164,7 @@ assignments      (id uuid pk, tracker_id, student_id, plan_template_id null, sta
                   active bool default true, settings jsonb, created_at, unique (tracker_id, student_id))
 plan_items       (id uuid pk, assignment_id, date date, title text, details jsonb, sort int)
 entries          (id uuid pk, assignment_id, plan_item_id null, field_version int, date date,
-                  data jsonb, did text, struggled text, minutes int,
+                  data jsonb, did text, struggled text, minutes int,   -- did/struggled/minutes copied from data; a struggled list as "p. 31 #4, p. 32 #6"
                   owner_id uuid default auth.uid(), created_at, updated_at,
                   unique (assignment_id, date, plan_item_id))
 followups        (id uuid pk, entry_id, assignment_id, label, due_date, status check in ('open','done','dropped'), owner_id, created_at)
@@ -188,10 +188,11 @@ push_subscriptions (id, user_id, endpoint, keys jsonb, remind_at time)
 
 ### Field types (registry in `src/trackers/fields/`)
 
-`number`, `counter`, `tally_group`, `checkbox`, `checklist`, `select`, `multi_select`, `short_text`, `long_text`, `duration`, `rating_1_5`, `page_range`, `yes_no`, `photo`.
+`number`, `counter`, `tally_group`, `checkbox`, `checklist`, `select`, `multi_select`, `short_text`, `long_text`, `duration`, `rating_1_5`, `page_range`, `yes_no`, `photo`, `plan_checklist`.
 
-- A definition looks like `{ key, type, label, required, help?, placeholder?, options?, showIf? }`.
-- Each type implements: renderer, Zod schema, empty value, summary formatter, SQL check.
+- A definition looks like `{ key, type, label, required, help?, placeholder?, options?, showIf?, optionsFrom? }`.
+- `plan_checklist` offers one checkbox per item its plan item lists (`optionsFrom: "plan.problems"`); it's hidden, and its value dropped, on a plan item with no list.
+- Each type implements: renderer, Zod schema, empty value, summary formatter, SQL check. Both checks receive the entry's plan item (in SQL as `field -> 'plan'`).
 - **Adding a field type** = one new file in the registry + one SQL check. No other code changes.
 
 ### Metric types
@@ -210,29 +211,25 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 **Plan**
 - Template from `seed/math_sessions.json`: 80 sessions, Sun/Tue/Thu/Sat, first date 2026-11-01. Three Thursdays are already moved to Wednesday.
-- `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind` and `reading_only`, plus `pdf_offset` on items that have pages.
-- Pages are printed pages. Show the PDF viewer pages beside them (printed + `pdf_offset`): "pp. 31–32 · PDF 33–34".
+- `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind`, `reading_only` and `problems`, plus `pdf_offset` on items that have pages.
+- `problems`: one label per problem or lettered part on the session's practice pages, named by the page it's printed on (`p. 31 #4`, `p. 15 #2(e)`); mixed checks list the problems they name; reviews and reading days have none.
+- Pages are printed pages. Today states them plainly ("Pages 31–32"); the log page shows only the topic.
 
-**Fields**
-- `checklist`: attempted, checked, explained, retry_planned
-- `outcomes` tally: I / H / S / U, with keyboard shortcuts `i h s u`
+**Fields** (three steps)
+- `completed`: "Did you complete the problems on the pages?" (yes/no; on reading days `read`, "Did you finish the reading?")
+- `struggled`: "Which problems did you struggle with?", a `plan_checklist` of the session's `problems` (none checked is an answer)
 - `minutes`
-- `key_idea`
-- `did`, `struggled` (both required; `did` starts prefilled from the session's assignment)
-- `reflection`, with a prompt rotating by session
-- `notebook` photo (optional)
 
 **Metrics**
-- `independent_rate = I / (I+H+S+U)`: null on reading-only days and when the total is 0
-- checklist complete
+- `independent_rate = (problems − struggled) / problems`: null when the session lists no problems
+- sessions completed per week
 - minutes per week
-- ideas explained per week
 
-**Followups:** from any H, S or U problem; label like `p. 31 #4`; due in 2 days. Review sessions (`kind` is `review` or `mixed_check`, set by `followups.listAllOpenWhen`) list everything still open.
+**Followups:** each problem checked in `struggled` becomes a retry with its label, due in 2 days (`followups.from`). An edit drops the retry of a problem no longer checked; one already done is never made again. Review sessions (`kind` is `review` or `mixed_check`, set by `followups.listAllOpenWhen`) list everything still open.
 
 **Pacing flags** (admin only, never shown to students):
-- "Slow down": in a week, H+S+U > I
-- "Trim repetition": 3 sessions in a row at ≥ 0.8 with `explained` checked
+- "Slow down": in a week, more problems struggled with than solved on my own
+- "Trim repetition": 3 sessions in a row at ≥ 0.8
 - "Behind plan": 2 or more missed sessions
 
 ### `violin` (cadence: daily, `display: inline_on_today_card`)
@@ -246,11 +243,11 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 | Screen | Who | Notes |
 |---|---|---|
-| Today | student | One card per active assignment, top to bottom: today's plan item (or the inline check-in; after saving, what's next), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
-| Log session | student | One step per screen; autosaves to IndexedDB; works offline; tally keys `i h s u`, Backspace undoes |
+| Today | student | One card per active assignment, top to bottom: today's pages (or the inline check-in; after saving, one line for what's next), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
+| Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. |
 | My week | student | Streaks and "solved on my own". Never a grade; no pacing flags. |
 | Overview | admin, viewer | Person picker (viewer: linked students only); per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
-| Struggles | admin, viewer | Every `struggled`, newest first, filterable, with inline comments |
+| Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
 | Retry queue | admin | Open followups, overdue first |
 | Plan editor | admin | Drag sessions; "insert catch-up day" shifts later items |
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
@@ -337,5 +334,5 @@ Mark the current phase when it changes.
 - Worked examples, then independent practice.
 - Retry assisted problems about 2 days later.
 - Spaced mixed review.
-- One "why does this work?" explanation per week.
+- One "why does this work?" explanation per week: a conversation, not a log question (the math log asks only three things).
 - When behind, extend the schedule rather than double the daily load.

@@ -16,20 +16,29 @@ export type PlanItem = {
 const whole = (value: unknown): number | null =>
   typeof value === 'number' && Number.isInteger(value) ? value : null
 
-/**
- * "pp. 31–32 · PDF 33–34": the printed pages and, when the item carries a pdf_offset,
- * the pages to open in the PDF viewer. Null when the item has no pages.
- */
-export function pageLabel(details: PlanItem['details']): string | null {
+/** "Pages 31–32", or "Page 35": the printed pages to work on. Null when the item has none. */
+export function pagesLabel(details: PlanItem['details']): string | null {
   const start = whole(details.page_start)
   const end = whole(details.page_end) ?? start
   if (start === null || end === null) return null
-  const span = (a: number, b: number) => (a === b ? `p. ${a}` : `pp. ${a}–${b}`)
-  const offset = whole(details.pdf_offset)
-  const printed = span(start, end)
-  if (offset === null || offset === 0) return printed
-  const pdf = start === end ? `PDF ${start + offset}` : `PDF ${start + offset}–${end + offset}`
-  return `${printed} · ${pdf}`
+  return start === end ? `Page ${String(start)}` : `Pages ${String(start)}–${String(end)}`
+}
+
+/**
+ * What a session asks for, as plainly as the item allows: its pages; else the problems
+ * it names (a mixed check: "p. 17 #4(c), p. 33 #8"); else its title.
+ */
+export function workLabel(item: Pick<PlanItem, 'title' | 'details'>): string {
+  const pages = pagesLabel(item.details)
+  if (pages) return pages
+  const problems = item.details.problems
+  if (Array.isArray(problems) && problems.length > 0) return problems.join(', ')
+  return item.title
+}
+
+/** The session's topic ("Solve by Assuming"), or null. */
+export function topicLabel(details: PlanItem['details']): string | null {
+  return typeof details.topic === 'string' && details.topic.trim() ? details.topic : null
 }
 
 /** "Session 6 · Solve by Assuming", from whichever of session and topic the item has. */

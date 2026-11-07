@@ -44,7 +44,7 @@ test.describe('the installed app', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect(page.getByText(ACCOUNTS.student.name, { exact: true })).toBeVisible()
     // The trackers come from the copy kept on the device.
-    await expect(math.getByText('Session 6 · Solve by Assuming')).toBeVisible()
+    await expect(math.getByText('Pages 31–32', { exact: true })).toBeVisible()
     await expect(page.getByText('Offline. Saves stay on this device.')).toBeVisible()
 
     // A screen not opened yet is precached too.

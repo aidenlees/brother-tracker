@@ -4,10 +4,12 @@
  * (13_field_parity.sql, written by `pnpm gen:parity`), so the browser and the database
  * can't quietly disagree. Values here are always present; blanks are the entry's job.
  */
-import type { FieldDefinition, FieldTypeName } from '../definition'
+import type { FieldDefinition, FieldTypeName, PlanDetails } from '../definition'
 
 export type TypeFixture = {
   field: FieldDefinition
+  /** The plan item's details, for types that read it (the trigger passes field -> 'plan'). */
+  plan?: PlanDetails
   valid: unknown[]
   invalid: unknown[]
 }
@@ -109,5 +111,11 @@ export const TYPE_FIXTURES: Record<FieldTypeName, TypeFixture> = {
     field: base('photo'),
     valid: ['0f8fad5b-d9cb-469f-a165-70867728950e'],
     invalid: ['0F8FAD5B-D9CB-469F-A165-70867728950E', 'not-a-photo', 5],
+  },
+  plan_checklist: {
+    field: base('plan_checklist', { optionsFrom: 'plan.problems' }),
+    plan: { problems: ['p. 31 #3', 'p. 31 #4', 'p. 32 #5(a)'] },
+    valid: [[], ['p. 31 #4'], ['p. 31 #3', 'p. 32 #5(a)']],
+    invalid: [['p. 33 #7'], ['p. 31 #4', 'p. 31 #4'], 'p. 31 #4', [4], {}, ['P. 31 #4'], true],
   },
 }

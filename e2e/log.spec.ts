@@ -1,12 +1,13 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { ACCOUNTS, authFile } from './accounts'
-import { assignmentId, clearEntries, entriesOn, planItemId, todayNY } from './data'
+import { addDays, assignmentId, clearEntries, entriesOn, planItemId, todayNY } from './data'
 import { signedInClient } from './supabase'
 
 /**
- * The log flow, against the fixtures: math session 6 is today, session 1 (reading only)
- * is past and unlogged, session 5 was logged two days ago.
+ * The math log flow, against the fixtures: session 6 (pp. 31–32: problems 3–6) is today,
+ * session 1 (reading only) is past and unlogged, session 5 was logged two days ago with
+ * p. 30 #2 checked as a struggle.
  */
 test.describe('@log the math log flow', () => {
   test.use({ storageState: authFile('student') })
@@ -18,118 +19,92 @@ test.describe('@log the math log flow', () => {
 
   const step = (page: Page) => page.getByRole('heading', { level: 2 })
   const progress = (page: Page) => page.getByText(/^\d+ of \d+$/)
+  const COMPLETED = 'Did you complete the problems on the pages?'
+  const STRUGGLED = 'Which problems did you struggle with?'
 
   async function open(page: Page) {
     await page.goto('today')
     await page.getByRole('link', { name: 'Log this session' }).click()
     await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
-    await expect(step(page)).toContainText("Today's checklist")
+    await expect(step(page)).toContainText(COMPLETED)
   }
 
-  test('a whole session, by keyboard alone', async ({ page }) => {
+  test('a whole session, by keyboard alone, makes a retry of each problem checked', async ({
+    page,
+  }) => {
     await open(page)
-    await expect(progress(page)).toHaveText('1 of 8')
+    await expect(progress(page)).toHaveText('1 of 3')
+    // The page says where you are by topic; the pages are on Today.
+    await expect(page.getByText('Solve by Assuming', { exact: true })).toBeVisible()
+    await expect(page.getByText(/PDF|Practice pp\./)).toHaveCount(0)
 
-    // Checklist: Space ticks, Tab moves, Enter goes on.
-    await page.keyboard.press('Space')
-    for (let i = 0; i < 3; i += 1) {
-      await page.keyboard.press('Tab')
-      await page.keyboard.press('Space')
-    }
+    await page.keyboard.press('y')
     await page.keyboard.press('Enter')
 
-    // Tallies: i h s u add one, Backspace takes back the last.
-    await expect(step(page)).toContainText('How each problem went')
-    await page.keyboard.type('iiihu')
-    await page.keyboard.press('Backspace')
-    await expect(page.getByText('4 problems')).toBeVisible()
-    await page.keyboard.press('Enter')
-
-    // One H: the retry step appears. Enter on its empty line moves on.
-    await expect(step(page)).toContainText('Problems to retry')
-    await expect(progress(page)).toHaveText('3 of 9')
+    // One box per problem on the session's pages; Tab moves, Space checks, Enter goes on.
+    await expect(step(page)).toContainText(STRUGGLED)
+    await expect(progress(page)).toHaveText('2 of 3')
+    await expect(page.getByRole('checkbox')).toHaveCount(4)
+    await expect(page.getByRole('checkbox', { name: 'p. 31 #3' })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Space') // p. 31 #4
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Space') // p. 32 #6
+    await expect(page.getByText('2 checked.')).toBeVisible()
     await page.keyboard.press('Enter')
 
     await expect(step(page)).toContainText('Minutes')
     await page.keyboard.type('45')
     await page.keyboard.press('Enter')
 
-    await expect(step(page)).toContainText(/Key idea or error to watch/)
-    await page.keyboard.type('assume they are all the same, then fix the difference')
-    await page.keyboard.press('Enter')
-
-    // "What I did" starts with the session's assignment; typing adds to it.
-    await expect(step(page)).toContainText('What I did')
-    await expect(page.getByRole('textbox')).toHaveValue('Practice pp. 31-32')
-    await page.keyboard.type(', checked every answer')
-    await page.keyboard.press('Enter')
-
-    await expect(step(page)).toContainText('What I struggled with')
-    await page.keyboard.type('p. 31 #4, the second part')
-    await page.keyboard.press('Enter')
-
-    await expect(step(page)).toContainText(/Reflection/)
-    await expect(page.getByText('Why does that step work?')).toBeVisible() // session 6's prompt
-    await page.keyboard.press('Enter')
-
-    await expect(step(page)).toContainText(/Notebook photo/)
-    await expect(progress(page)).toHaveText('9 of 9')
-    await page.keyboard.press('Enter')
-
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     const math = page.getByRole('region', { name: 'Singapore Math' })
     await expect(math.getByText('· Synced')).toBeVisible()
-    // With today's session saved, the card shows what comes next.
-    const next = math.getByRole('region', { name: /^Next: / })
-    await expect(next).toContainText('Session 7 · Solve by Assuming')
-    await expect(next).toContainText('Practice pp. 33-34')
+    // With today's session saved, one line says what comes next.
+    await expect(math.getByText(/^Next: .* · Pages 33–34$/)).toBeVisible()
 
     const client = await signedInClient(ACCOUNTS.student.email)
     const [entry] = await entriesOn(client, 'singapore-math', todayNY())
     expect(entry?.plan_item_id).toBe(await planItemId(client, 'singapore-math', 6))
     expect(entry?.data).toEqual({
-      checklist: { attempted: true, checked: true, explained: true, retry_planned: true },
-      outcomes: { I: 3, H: 1, S: 0, U: 0 },
+      completed: true,
+      struggled: ['p. 31 #4', 'p. 32 #6'],
       minutes: 45,
-      key_idea: 'assume they are all the same, then fix the difference',
-      did: 'Practice pp. 31-32, checked every answer',
-      struggled: 'p. 31 #4, the second part',
     })
+    await expect
+      .poll(async () => {
+        const { data } = await client
+          .from('followups')
+          .select('label, due_date, status')
+          .eq('entry_id', entry?.id ?? '')
+          .order('label')
+        return data
+      })
+      .toEqual([
+        { label: 'p. 31 #4', due_date: addDays(todayNY(), 2), status: 'open' },
+        { label: 'p. 32 #6', due_date: addDays(todayNY(), 2), status: 'open' },
+      ])
   })
 
-  test('a reading-only session skips the tallies', async ({ page }) => {
+  test('a reading-only session asks about the reading, then the minutes', async ({ page }) => {
     const client = await signedInClient(ACCOUNTS.student.email)
     const math = await assignmentId(client, 'singapore-math')
     await page.goto(`log/${math}/${await planItemId(client, 'singapore-math', 1)}`)
-    const answers: Record<string, string> = {
-      Minutes: '20',
-      'What I struggled with': 'which examples to read twice',
-    }
-    const seen: string[] = []
-    for (let n = 1; n <= 7; n += 1) {
-      await expect(progress(page)).toHaveText(`${n} of 7`)
-      const label = (await step(page).innerText()).replace(/\s*optional$/, '')
-      seen.push(label)
-      const answer = answers[label]
-      if (answer) await page.keyboard.type(answer)
-      if (n < 7) await page.getByRole('button', { name: 'Next' }).click()
-    }
-    expect(seen).toEqual([
-      "Today's checklist",
-      'Minutes',
-      'Key idea or error to watch',
-      'What I did',
-      'What I struggled with',
-      'Reflection',
-      'Notebook photo',
-    ])
+    await expect(progress(page)).toHaveText('1 of 2')
+    await expect(step(page)).toContainText('Did you finish the reading?')
+    await page.keyboard.press('y')
+    await page.getByRole('button', { name: 'Next' }).click()
+    await expect(step(page)).toContainText('Minutes')
+    await expect(page.getByRole('checkbox')).toHaveCount(0)
   })
 
   test('closing mid-way keeps the answers; Today offers to resume', async ({ page }) => {
     await open(page)
-    await page.keyboard.press('Space')
+    await page.keyboard.press('y')
     await page.keyboard.press('Enter')
-    await page.keyboard.type('ii')
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Space') // p. 31 #4
     await page.keyboard.press('Enter')
     await expect(step(page)).toContainText('Minutes')
     await page.keyboard.type('30')
@@ -137,10 +112,10 @@ test.describe('@log the math log flow', () => {
 
     await page.reload()
     await expect(step(page)).toContainText('Minutes')
-    await expect(progress(page)).toHaveText('3 of 8')
+    await expect(progress(page)).toHaveText('3 of 3')
     await expect(page.getByRole('textbox')).toHaveValue('30')
     await page.getByRole('button', { name: 'Back' }).click()
-    await expect(page.getByText('2 problems')).toBeVisible()
+    await expect(page.getByRole('checkbox', { name: 'p. 31 #4' })).toBeChecked()
 
     await page.getByRole('link', { name: 'Back to Today' }).click()
     await expect(page.getByRole('link', { name: 'Resume logging' })).toBeVisible()
@@ -148,36 +123,36 @@ test.describe('@log the math log flow', () => {
 
   test('a required answer has to be given before going on', async ({ page }) => {
     await open(page)
-    for (const label of ["Today's checklist", 'How each problem went']) {
-      await expect(step(page)).toContainText(label)
-      await page.keyboard.press('Enter')
-    }
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('alert')).toHaveText(`${COMPLETED} is required`)
+    await expect(step(page)).toContainText(COMPLETED)
+
+    await page.keyboard.press('n')
+    await page.keyboard.press('Enter')
+    await expect(step(page)).toContainText(STRUGGLED)
+    await page.keyboard.press('Enter') // none checked is an answer
     await expect(step(page)).toContainText('Minutes')
     await page.keyboard.press('Enter')
     await expect(page.getByRole('alert')).toHaveText('Minutes is required')
-    await expect(step(page)).toContainText('Minutes')
   })
 
-  test('an earlier session can be edited within its 7 days', async ({ page }) => {
+  test('an earlier session can be edited within its 7 days, keeping its retry', async ({
+    page,
+  }) => {
     const client = await signedInClient(ACCOUNTS.student.email)
     const math = await assignmentId(client, 'singapore-math')
     const session5 = await planItemId(client, 'singapore-math', 5)
     await page.goto(`log/${math}/${session5}`)
-    await expect(step(page)).toContainText("Today's checklist")
-    while (!(await step(page).innerText()).startsWith('Minutes')) {
-      await page.getByRole('button', { name: 'Next' }).click()
-    }
+    await expect(step(page)).toContainText(COMPLETED)
+    await page.getByRole('button', { name: 'Next' }).click()
+    await expect(page.getByRole('checkbox', { name: 'p. 30 #2' })).toBeChecked()
+    await page.getByRole('button', { name: 'Next' }).click()
     // The fixture logged 35 minutes; a re-run finds this test's last value instead.
     const box = page.getByRole('textbox', { name: 'Minutes' })
     await expect(box).toHaveValue(/^(35|40)$/)
     const minutes = (await box.inputValue()) === '40' ? 35 : 40
     await box.fill(String(minutes))
-    for (;;) {
-      const button = page.getByRole('button', { name: /^(Next|Save)$/ })
-      const label = await button.innerText()
-      await button.click()
-      if (label.includes('Save')) break
-    }
+    await page.getByRole('button', { name: 'Save' }).click()
 
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect
@@ -186,6 +161,9 @@ test.describe('@log the math log flow', () => {
         return (data as { data: { minutes: number } }[]).map((e) => e.data.minutes)
       })
       .toEqual([minutes])
+    // Still checked, so its retry is the same one, not a second.
+    const { data } = await client.from('followups').select('label').eq('label', 'p. 30 #2')
+    expect(data).toHaveLength(1)
   })
 
   test('each step passes an accessibility scan', async ({ page }) => {
@@ -195,8 +173,8 @@ test.describe('@log the math log flow', () => {
         .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
         .analyze()
       expect(results.violations).toEqual([])
-      await page.getByRole('button', { name: 'Next' }).click()
-      if (i === 1) await page.keyboard.type('20')
+      if (i === 0) await page.keyboard.press('y')
+      if (i < 2) await page.getByRole('button', { name: 'Next' }).click()
     }
   })
 })

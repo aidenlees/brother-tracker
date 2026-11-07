@@ -577,6 +577,7 @@ export type Database = {
       field_check_number: { Args: { field: Json; value: Json }; Returns: string }
       field_check_page_range: { Args: { field: Json; value: Json }; Returns: string }
       field_check_photo: { Args: { field: Json; value: Json }; Returns: string }
+      field_check_plan_checklist: { Args: { field: Json; value: Json }; Returns: string }
       field_check_rating_1_5: { Args: { field: Json; value: Json }; Returns: string }
       field_check_select: { Args: { field: Json; value: Json }; Returns: string }
       field_check_short_text: { Args: { field: Json; value: Json }; Returns: string }

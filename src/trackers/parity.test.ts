@@ -30,9 +30,31 @@ const PRACTICE: PlanDetails = {
   page_end: 32,
   kind: 'practice',
   reading_only: false,
+  problems: ['p. 31 #3', 'p. 31 #4', 'p. 32 #5', 'p. 32 #6'],
   pdf_offset: 2,
 }
-const READING: PlanDetails = { ...PRACTICE, session: 1, reading_only: true }
+const READING: PlanDetails = {
+  session: 1,
+  week: 1,
+  topic: 'The Four Operations',
+  assignment: 'pp. 5-12: parent guidance, notes and examples',
+  page_start: 5,
+  page_end: 12,
+  kind: 'study',
+  reading_only: true,
+  pdf_offset: 2,
+}
+const REVIEW: PlanDetails = {
+  session: 21,
+  week: 6,
+  topic: 'Review 1: Chapters 1-5',
+  assignment: 'Review pp. 13-35: redo 4 marked problems from Chapters 1-2.',
+  page_start: 13,
+  page_end: 35,
+  kind: 'review',
+  reading_only: false,
+  pdf_offset: 2,
+}
 
 type EntryCase = {
   name: string
@@ -42,45 +64,51 @@ type EntryCase = {
   valid: boolean
 }
 
-const full = {
-  checklist: { attempted: true, checked: true, explained: true, retry_planned: true },
-  outcomes: { I: 5, H: 2, S: 1, U: 0 },
-  minutes: 45,
-  key_idea: 'total distance over total time',
-  did: 'Practice pp. 31-32',
-  struggled: 'p. 31 #4, the second part',
-  reflection: '',
-}
+const full = { completed: true, struggled: ['p. 31 #4', 'p. 32 #6'], minutes: 45 }
 
 /** Entries for the launch trackers, as the log flow and the Today card would send them. */
 const ENTRY_CASES: EntryCase[] = [
   { name: 'a full session', tracker: 'singapore-math', plan: PRACTICE, data: full, valid: true },
   {
-    name: 'the least a session needs',
+    name: 'nothing was hard',
     tracker: 'singapore-math',
     plan: PRACTICE,
-    data: { checklist: {}, minutes: 20, did: 'Read ahead', struggled: 'Nothing new' },
+    data: { completed: false, struggled: [], minutes: 20 },
     valid: true,
   },
   {
-    name: 'blank optional text, which is dropped',
-    tracker: 'singapore-math',
-    plan: PRACTICE,
-    data: { ...full, key_idea: '   ' },
-    valid: true,
-  },
-  {
-    name: 'tallies on a reading-only day, which are dropped',
+    name: 'a reading day asks about the reading instead',
     tracker: 'singapore-math',
     plan: READING,
-    data: { ...full, outcomes: { I: 2 } },
+    data: { read: true, minutes: 20 },
     valid: true,
   },
   {
-    name: 'a missing "What I struggled with"',
+    name: 'answers for the problems on a reading day, which are dropped',
+    tracker: 'singapore-math',
+    plan: READING,
+    data: { read: true, completed: true, struggled: ['p. 31 #4'], minutes: 20 },
+    valid: true,
+  },
+  {
+    name: 'a review lists no problems, so a struggle list is dropped',
+    tracker: 'singapore-math',
+    plan: REVIEW,
+    data: { completed: true, struggled: ['p. 31 #4'], minutes: 25 },
+    valid: true,
+  },
+  {
+    name: 'no answer to "Did you complete the problems?"',
     tracker: 'singapore-math',
     plan: PRACTICE,
-    data: { ...full, struggled: undefined },
+    data: { struggled: [], minutes: 20 },
+    valid: false,
+  },
+  {
+    name: 'a problem from another session',
+    tracker: 'singapore-math',
+    plan: PRACTICE,
+    data: { ...full, struggled: ['p. 40 #1'] },
     valid: false,
   },
   {
@@ -91,17 +119,17 @@ const ENTRY_CASES: EntryCase[] = [
     valid: false,
   },
   {
+    name: 'a field from the first version (the old checklist)',
+    tracker: 'singapore-math',
+    plan: PRACTICE,
+    data: { ...full, checklist: { attempted: true } },
+    valid: false,
+  },
+  {
     name: 'more minutes than a day has',
     tracker: 'singapore-math',
     plan: PRACTICE,
     data: { ...full, minutes: 2000 },
-    valid: false,
-  },
-  {
-    name: 'an outcome that is not I, H, S or U',
-    tracker: 'singapore-math',
-    plan: PRACTICE,
-    data: { ...full, outcomes: { X: 1 } },
     valid: false,
   },
   {
@@ -185,8 +213,11 @@ function buildParitySql(): string {
     '-- Field types: the same values public.field_check_<type> must accept and refuse.',
   )
   for (const type of FIELD_TYPES) {
-    const { field, valid, invalid } = TYPE_FIXTURES[type]
-    const call = (value: unknown) => `public.field_check_${type}(${jsonb(value)}, ${jsonb(field)})`
+    const { field, plan, valid, invalid } = TYPE_FIXTURES[type]
+    // The trigger hands each check the plan item as field -> 'plan'; the fixture does too.
+    const asCalled = plan === undefined ? field : { ...field, plan }
+    const call = (value: unknown) =>
+      `public.field_check_${type}(${jsonb(value)}, ${jsonb(asCalled)})`
     for (const value of valid) {
       test(
         `select is(${call(value)}, null, ${literal(`${type} accepts ${describeValue(value)}`)});`,
@@ -279,8 +310,8 @@ describe('field type fixtures', () => {
   })
 
   for (const type of FIELD_TYPES) {
-    const { field, valid, invalid } = TYPE_FIXTURES[type]
-    const schema = FIELD_REGISTRY[type].schema(field)
+    const { field, plan, valid, invalid } = TYPE_FIXTURES[type]
+    const schema = FIELD_REGISTRY[type].schema(field, plan ?? null)
     it(`${type}: Zod accepts the valid values and refuses the rest`, () => {
       for (const value of valid)
         expect(schema.safeParse(value).success, describeValue(value)).toBe(true)

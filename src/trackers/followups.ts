@@ -1,36 +1,50 @@
 /**
  * Followups ("retries"), as the tracker's `followups` rules describe them (CLAUDE.md,
- * "Followups"): offered after the fields named in enabledFrom when any of those counts
- * is above zero, due defaultDueDays after the session, and all listed on plan items
- * that match listAllOpenWhen (review sessions).
+ * "Followups"): each item checked in the plan_checklist field named by `from` (the
+ * math log's "Which problems did you struggle with?") becomes a retry with that label,
+ * due defaultDueDays after the session; plan items that match listAllOpenWhen (review
+ * sessions) list every open one.
  */
 import { addDays, daysBetween, formatDay } from '@/lib/dates'
 import type { FollowupRules } from './definition'
 import type { EntryData, PlanDetails } from './entry'
 
 type Rules = FollowupRules
+type Status = 'open' | 'done' | 'dropped'
 
-/** "outcomes.H" -> ["outcomes", "H"] */
-const split = (ref: string): [string, string | undefined] => {
-  const [field, option] = ref.split('.')
-  return [field ?? ref, option]
+/** The retries an entry calls for: the items checked in rules.from, in order. */
+export function retryLabels(rules: Rules, data: EntryData): string[] {
+  const value = data[rules.from]
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 }
 
-/** The fields whose answers can call for a retry (e.g. the tally of outcomes). */
-export function retryFields(rules: Rules): Set<string> {
-  return new Set(rules.enabledFrom.map((ref) => split(ref)[0]))
+export type RetryChanges = {
+  /** Labels checked with no retry yet. */
+  create: string[]
+  /** Retries dropped earlier whose item is checked again. */
+  reopen: string[]
+  /** Open retries whose item is no longer checked. */
+  drop: string[]
 }
 
-/** How many problems call for a retry: H + S + U, for the launch math tracker. */
-export function retryCount(rules: Rules, data: EntryData): number {
-  return rules.enabledFrom.reduce((sum, ref) => {
-    const [field, option] = split(ref)
-    const value =
-      option === undefined
-        ? data[field]
-        : (data[field] as Record<string, unknown> | undefined)?.[option]
-    return sum + (typeof value === 'number' && value > 0 ? value : 0)
-  }, 0)
+/**
+ * What saving an entry does to its retries, matched by label against all of the
+ * entry's retries, so a retry already done is never made again.
+ */
+export function retryChanges(
+  checked: readonly string[],
+  existing: readonly { id: string; label: string; status: Status }[],
+): RetryChanges {
+  const labels = new Set(existing.map((f) => f.label))
+  return {
+    create: checked.filter((label) => !labels.has(label)),
+    reopen: existing
+      .filter((f) => f.status === 'dropped' && checked.includes(f.label))
+      .map((f) => f.id),
+    drop: existing
+      .filter((f) => f.status === 'open' && !checked.includes(f.label))
+      .map((f) => f.id),
+  }
 }
 
 /**
