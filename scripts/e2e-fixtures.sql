@@ -55,12 +55,21 @@ begin
   from public.plan_templates t, jsonb_array_elements(t.items) i
   where t.first_date = v_first and (i -> 'details' ->> 'session')::int = 21;
 
+  -- A local-only daily tracker with a photo field. No launch tracker has one, and this
+  -- keeps the photo path (kept on the device, uploaded with its entry, storage policies,
+  -- signed URLs) under an end-to-end test (photo.spec.ts). Never seeded to the cloud.
+  insert into public.trackers (slug, name, icon, color, cadence, sort, fields)
+  values ('e2e-notebook', 'Notebook', 'circle', 'moss', '{"type": "daily"}', 3,
+          '[{"key": "notebook", "type": "photo", "label": "Notebook photo", "required": true}]')
+  on conflict (slug) do update set fields = excluded.fields;
+
   delete from public.assignments where student_id in (v_student, v_student2);
 
   v_math := public.assign_tracker(v_student, 'singapore-math', v_today - v_offset_6);
   v_violin := public.assign_tracker(v_student, 'violin', v_today - 10);
   v_math2 := public.assign_tracker(v_student2, 'singapore-math', v_today - v_offset_21);
   perform public.assign_tracker(v_student2, 'violin', v_today + 3);
+  perform public.assign_tracker(v_student2, 'e2e-notebook', v_today - 10);
 
   -- student: session 5, logged two days ago, with a retry due today.
   select id, date into v_item from public.plan_items
