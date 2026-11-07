@@ -23,6 +23,13 @@ export const SCREENS: readonly Screen[] = [
     inNav: false,
     params: ':assignmentId/:planItemId?',
   },
+  {
+    path: 'session',
+    label: 'Session',
+    roles: ['student'],
+    inNav: false,
+    params: ':assignmentId/:planItemId',
+  },
   { path: 'week', label: 'My week', roles: ['student'], inNav: true },
   { path: 'overview', label: 'Overview', roles: ['admin', 'viewer'], inNav: true },
   { path: 'struggles', label: 'Struggles', roles: ['admin', 'viewer'], inNav: true },

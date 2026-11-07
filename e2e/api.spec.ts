@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { ACCOUNTS } from './accounts'
-import { signedInClient } from './supabase'
+import { createClient } from '@supabase/supabase-js'
+import { localEnv, signedInClient } from './supabase'
 
 /**
  * The Data API itself, not the app: what a signed-in user could call with their own
@@ -26,5 +27,24 @@ test.describe('the Data API', () => {
       // PGRST202: no such function in the exposed schema cache.
       expect(error?.code, `${name} is callable`).toBe('PGRST202')
     }
+  })
+
+  test('signs links to the book’s pages for an assigned student, never for a visitor', async () => {
+    const student = await signedInClient(ACCOUNTS.student.email)
+    const signed = await student.storage
+      .from('book-pages')
+      .createSignedUrl('singapore-math/031.webp', 600)
+    expect(signed.error).toBeNull()
+    expect((await fetch(signed.data?.signedUrl ?? '')).status).toBe(200)
+
+    const { url, key } = localEnv()
+    const visitor = createClient(url, key, { auth: { persistSession: false } })
+    const refused = await visitor.storage
+      .from('book-pages')
+      .createSignedUrl('singapore-math/031.webp', 600)
+    expect(refused.data).toBeNull()
+    expect(refused.error).not.toBeNull()
+    const listed = await visitor.storage.from('book-pages').list('singapore-math')
+    expect(listed.data ?? []).toEqual([])
   })
 })

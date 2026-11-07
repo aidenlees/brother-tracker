@@ -1,12 +1,13 @@
 import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router'
+import { PageThumbnails } from '@/components/BookPages'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
 import type { Draft } from '@/lib/outbox/types'
 import type { Assignment } from '@/lib/student-data'
-import { itemsOn, nextItem, workLabel, type PlanItem } from '@/trackers/plan'
-import { logPath } from '../log/paths'
+import { bookPages, itemsOn, nextItem, workLabel, type PlanItem } from '@/trackers/plan'
+import { logPath, sessionPath } from '../log/paths'
 import { SavedNote } from './TrackerCard'
 
 /**
@@ -16,6 +17,7 @@ import { SavedNote } from './TrackerCard'
  */
 export function PlanCard({
   assignment,
+  slug,
   items,
   entries,
   drafts,
@@ -23,6 +25,8 @@ export function PlanCard({
   today,
 }: {
   assignment: Assignment
+  /** The tracker's slug, which names its book's pages. */
+  slug: string
   items: PlanItem[]
   entries: EntryView[]
   /** Logs in progress on this device. */
@@ -47,11 +51,13 @@ export function PlanCard({
             inProgress={drafts.some((d) => d.planItemId === item.id)}
             fresh={savedId !== undefined && entryFor(item)?.id === savedId}
             href={logPath(assignment.id, { planItemId: item.id })}
+            pagesHref={sessionPath(assignment.id, item.id)}
+            slug={slug}
           />
         ))}
         {allLogged ? (
           next ? (
-            <UpNext label="Next" item={next} />
+            <UpNext label="Next" item={next} href={sessionPath(assignment.id, next.id)} />
           ) : (
             <p className="text-muted-foreground">That was the last session in the plan.</p>
           )
@@ -61,25 +67,25 @@ export function PlanCard({
   }
 
   if (today < assignment.start_date && next) {
-    return <UpNext label="First session" item={next} />
+    return <UpNext label="First session" item={next} href={sessionPath(assignment.id, next.id)} />
   }
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground">
         {next ? 'No session today.' : 'That’s every session in the plan.'}
       </p>
-      {next ? <UpNext label="Next" item={next} /> : null}
+      {next ? <UpNext label="Next" item={next} href={sessionPath(assignment.id, next.id)} /> : null}
     </div>
   )
 }
 
-/** "Next: Sunday, November 8 · Pages 33–34" */
-function UpNext({ label, item }: { label: string; item: PlanItem }) {
+/** "Next: Sunday, November 8 · Pages 33–34", opening that session's pages. */
+function UpNext({ label, item, href }: { label: string; item: PlanItem; href: string }) {
   return (
-    <p className="text-small text-muted-foreground">
+    <Link to={href} className="self-start text-small text-muted-foreground hover:text-foreground">
       <span className="font-medium text-foreground">{label}:</span> {formatDay(item.date, 'long')} ·{' '}
       <span className="tabular-nums">{workLabel(item)}</span>
-    </p>
+    </Link>
   )
 }
 
@@ -89,16 +95,27 @@ function Session({
   inProgress,
   fresh,
   href,
+  pagesHref,
+  slug,
 }: {
   item: PlanItem
   entry?: EntryView
   inProgress: boolean
   fresh: boolean
   href: string
+  /** The session's page, with its pages from the book. */
+  pagesHref: string
+  slug: string
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-lead font-medium text-foreground tabular-nums">{workLabel(item)}</p>
+      <Link
+        to={pagesHref}
+        className="self-start text-lead font-medium text-foreground tabular-nums underline-offset-4 hover:underline"
+      >
+        {workLabel(item)}
+      </Link>
+      <PageThumbnails slug={slug} pages={bookPages(item.details)} href={pagesHref} />
       {entry ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <SavedNote sync={entry.sync} reason={entry.reason} fresh={fresh} />

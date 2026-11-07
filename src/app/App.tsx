@@ -1,3 +1,4 @@
+import { defaultShouldDehydrateQuery } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider } from 'react-router'
 import { AuthProvider } from '@/lib/AuthProvider'
@@ -8,7 +9,16 @@ export function App() {
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: CACHE_MAX_AGE, buster: CACHE_VERSION }}
+      persistOptions={{
+        persister,
+        maxAge: CACHE_MAX_AGE,
+        buster: CACHE_VERSION,
+        // Short-lived answers (signed links to the book's pages) aren't kept on the device.
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            defaultShouldDehydrateQuery(query) && query.meta?.persist !== false,
+        },
+      }}
     >
       <AuthProvider>
         <RouterProvider router={router} />

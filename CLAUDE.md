@@ -60,7 +60,8 @@ pnpm gen:parity          # rewrite supabase/tests/database/13_field_parity.sql f
 pnpm gen:icons           # app icons in public/ from public/favicon.svg (commit the results)
 pnpm test                # Vitest
 pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
-pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' assignments, entries and retries around today; after db reset + seed
+pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' assignments, entries and retries around today, and placeholder book pages if none; after db reset + seed
+pnpm book:pages          # render the plan's printed pages from the book PDF in seed/ (gitignored) and upload them to the private book-pages bucket; --remote for the cloud (needs Python 3 + pypdfium2 + Pillow)
 pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview); screenshots land in test-results/screens/
 pnpm e2e --grep @pace    # the student-speed timing test: math log under 2 min, violin check-in about 10 s (also runs in pnpm e2e)
 pnpm e2e --project=pwa   # installed-app tests only: manifest, service worker, offline reload
@@ -75,7 +76,7 @@ supabase db push         # apply migrations to the linked cloud project
 
 ```
 src/
-  app/            routes: today/, log/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
+  app/            routes: today/, log/, session/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
   trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, the last 7 days (week.ts), metrics
@@ -88,7 +89,7 @@ supabase/
 seed/
   trackers.json        launch tracker definitions
   math_sessions.json   80-session math plan (plan template source), with each session's problem numbers (read once from the book, which stays out of the repo)
-scripts/               seed, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
+scripts/               seed, book-pages, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
 e2e/                   Playwright specs; supabase.ts talks to the local stack only
 .github/workflows/     ci.yml, deploy.yml, backup.yml
 ```
@@ -134,7 +135,9 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
    - Insert when `can_see(entry owner)` and the caller is admin, a viewer, or the entry's own student.
    - Authors edit and delete only their own comments.
 8. **Audit:** an `audit_log` trigger on every table above records actor, action, before and after.
-9. **Storage:** bucket `attachments` is private, with paths `{owner_id}/{entry_id}/{uuid}.jpg`. Policies mirror rule 3. Signed URLs last 10 minutes or less.
+9. **Storage:** every bucket is private, and signed URLs last 10 minutes or less.
+   - `attachments`: paths `{owner_id}/{entry_id}/{uuid}.jpg`. Policies mirror rule 3.
+   - `book-pages`: the printed book's pages, `{tracker slug}/{3-digit page}.webp`. Read by whoever can see a student actively assigned that tracker; written by the admin only. The book and its images never enter the repo or the public site.
 10. **Keys:** only the publishable key (`sb_publishable_…`, the `anon` role) ships to the client; never the legacy anon JWT. The service key lives only in Edge Function and Actions secrets. CI fails on `service_role` or JWT-looking strings in `src/` or `dist/`.
 11. **Every policy change ships with pgTAP tests proving the refusals, written first.** Each of these must fail:
     - an admin insert
@@ -213,7 +216,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 - Template from `seed/math_sessions.json`: 80 sessions, Sun/Tue/Thu/Sat, first date 2026-11-01. Three Thursdays are already moved to Wednesday.
 - `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind`, `reading_only` and `problems`, plus `pdf_offset` on items that have pages.
 - `problems`: one label per problem or lettered part on the session's practice pages, named by the page it's printed on (`p. 31 #4`, `p. 15 #2(e)`); mixed checks list the problems they name; reviews and reading days have none.
-- Pages are printed pages. Today states them plainly ("Pages 31–32"); the log page shows only the topic.
+- Pages are printed pages. Today states them plainly ("Pages 31–32") with images of the pages; a session's page shows each one large; the log page shows only the topic.
 
 **Fields** (three steps)
 - `completed`: "Did you complete the problems on the pages?" (yes/no; on reading days `read`, "Did you finish the reading?")
@@ -245,11 +248,12 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 |---|---|---|
 | Today | student | One card per active assignment, top to bottom: today's pages (or the inline check-in; after saving, one line for what's next), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
 | Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. |
-| My week | student | Streaks and "solved on my own". Never a grade; no pacing flags. |
+| My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic and each check-in, with where it stands. Never a grade; no pacing flags. |
+| Session | student | One planned session: topic, date, problems, the book's pages large, and Log ("Planned for …" ahead of its day). |
 | Overview | admin, viewer | Person picker (viewer: linked students only); per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
 | Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
 | Retry queue | admin | Open followups, overdue first |
-| Plan editor | admin | Drag sessions; "insert catch-up day" shifts later items |
+| Plan editor | admin | Every session by week: edit date, topic and pages (the problem checkboxes follow), move a session and every later one a plan day later (a catch-up day) or earlier, keeping the weekly rhythm, or reset it to the seed baseline |
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
 | People | admin | Add or disable accounts (via `admin-users`), set roles, link viewers to students, assign trackers with a start date |
 | Export | admin | CSV / .xlsx per tracker and person; math uses the original sheet's columns |
@@ -299,11 +303,13 @@ Mark the current phase when it changes.
 - [x] **1. Foundation** (done 2026-11-05, PR #1)
   - Builds: scaffold, full schema + helpers + RLS + audit, `assign_tracker`, pgTAP refusal tests, local fake-user seed, password login, role-based nav shell, `pnpm seed`, CI, Pages deploy.
   - *Done when:* every refusal in rule 11 is tested and failing correctly, the student's own write succeeds, and the site is live.
-- [ ] **2. Student MVP** ← current (branch `phase-2`)
+- [x] **2. Student MVP** (done 2026-11-07, PRs #2–#4)
   - Builds: Today, math log flow, violin inline check-in, followups, offline outbox, backfill for missed dates.
   - *Done when:* the student logs a real session on a laptop in under 2 minutes, unaided.
-- [ ] **3. Admin side + connectors**
+  - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
+- [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

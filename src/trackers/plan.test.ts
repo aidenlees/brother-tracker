@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { streak } from './metrics/streak'
 import {
+  bookPages,
   itemsOn,
   missedItems,
   nextItem,
@@ -41,6 +42,17 @@ describe('workLabel', () => {
       }),
     ).toBe('p. 17 #4(c), p. 33 #8')
     expect(workLabel({ title: 'Explain 3 solutions', details: {} })).toBe('Explain 3 solutions')
+  })
+})
+
+describe('bookPages', () => {
+  it('lists the pages of the range, or the pages the problems name', () => {
+    expect(bookPages({ page_start: 31, page_end: 32 })).toEqual([31, 32])
+    expect(bookPages({ page_start: 35, page_end: 35 })).toEqual([35])
+    expect(
+      bookPages({ page_start: null, problems: ['p. 33 #8', 'p. 17 #4(c)', 'p. 33 #9'] }),
+    ).toEqual([17, 33])
+    expect(bookPages({})).toEqual([])
   })
 })
 

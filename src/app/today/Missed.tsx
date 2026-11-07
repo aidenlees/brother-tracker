@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import type { Draft } from '@/lib/outbox/types'
 import { workLabel, type PlanItem } from '@/trackers/plan'
-import { logPath } from '../log/paths'
+import { logPath, sessionPath } from '../log/paths'
 
 /**
  * Past sessions with no entry yet: a to-do, not a judgement (never "behind"; pacing
@@ -44,11 +44,14 @@ export function Missed({
             const inProgress = drafts.some((d) => d.planItemId === item.id)
             return (
               <li key={item.id} className="grid grid-cols-[1fr_auto] items-center gap-3">
-                <span className="text-foreground">
+                <Link
+                  to={sessionPath(assignmentId, item.id)}
+                  className="text-foreground underline-offset-4 hover:underline"
+                >
                   {formatDay(item.date)}
                   <span className="text-muted-foreground"> · </span>
                   <span className="tabular-nums">{workLabel(item)}</span>
-                </span>
+                </Link>
                 <Button asChild size="sm" variant="outline">
                   <Link
                     to={logPath(assignmentId, { planItemId: item.id })}

@@ -34,8 +34,14 @@ for (const viewport of VIEWPORTS) {
           fullPage: true,
         })
 
-      /** After the data is in, so the shot shows the screen rather than "Loading…". */
-      const settled = (page: Page) => expect(page.getByRole('status')).toHaveCount(0)
+      /** After the data (and any page images) are in, so the shot shows the screen. */
+      const settled = async (page: Page) => {
+        await expect(page.getByRole('status')).toHaveCount(0)
+        // Page images: their signed links are in (no loading placeholders) and drawn.
+        await page.waitForFunction(
+          "!document.querySelector('.animate-pulse') && [...document.images].every((i) => i.complete && i.naturalWidth > 0)",
+        )
+      }
 
       test('login', async ({ page }) => {
         await page.goto('login')
@@ -62,6 +68,23 @@ for (const viewport of VIEWPORTS) {
           })
         })
       }
+
+      test.describe('admin', () => {
+        test.use({ storageState: authFile('admin') })
+
+        test('the plan editor, and editing a session', async ({ page }) => {
+          await page.goto('plan')
+          await page
+            .getByLabel('Student and tracker')
+            .selectOption({ label: 'Sam · Singapore Math' })
+          await expect(page.getByText(/Session 6 · Solve by Assuming/).first()).toBeVisible()
+          await settled(page)
+          await shot(page, 'plan')
+          await page.getByRole('button', { name: /^Edit .*Session 7 · Solve by Assuming$/ }).click()
+          await expect(page.getByRole('form', { name: /^Edit / })).toBeVisible()
+          await shot(page, 'plan-edit')
+        })
+      })
 
       test.describe('student', () => {
         test.use({ storageState: authFile('student') })
@@ -96,6 +119,17 @@ for (const viewport of VIEWPORTS) {
           await settled(page)
           await shot(page, 'today-math-saved')
           await clearEntries(client, 'singapore-math', todayNY())
+        })
+
+        test('My week, and a session with its pages', async ({ page }) => {
+          await page.goto('week')
+          await expect(page.getByRole('heading', { level: 1, name: 'My week' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'week')
+          await page.getByRole('link', { name: /^Pages 31–32/ }).click()
+          await expect(page.getByRole('img', { name: 'Page 31 of the book' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'session')
         })
 
         test('Today: saved on this device, then synced', async ({ page, context }) => {
