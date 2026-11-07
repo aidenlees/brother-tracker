@@ -4,7 +4,7 @@ import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import type { Draft } from '@/lib/outbox/types'
-import { sessionLabel, type PlanItem } from '@/trackers/plan'
+import { workLabel, type PlanItem } from '@/trackers/plan'
 import { logPath } from '../log/paths'
 
 /**
@@ -41,20 +41,18 @@ export function Missed({
         </summary>
         <ul className="mt-4 flex flex-col gap-4">
           {items.map((item) => {
-            const session = sessionLabel(item.details)
             const inProgress = drafts.some((d) => d.planItemId === item.id)
             return (
               <li key={item.id} className="grid grid-cols-[1fr_auto] items-center gap-3">
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-small text-muted-foreground">
-                    {[formatDay(item.date), session].filter(Boolean).join(' · ')}
-                  </span>
-                  <span className="text-foreground">{item.title}</span>
+                <span className="text-foreground">
+                  {formatDay(item.date)}
+                  <span className="text-muted-foreground"> · </span>
+                  <span className="tabular-nums">{workLabel(item)}</span>
                 </span>
                 <Button asChild size="sm" variant="outline">
                   <Link
                     to={logPath(assignmentId, { planItemId: item.id })}
-                    aria-label={`${inProgress ? 'Resume' : 'Log'} ${formatDay(item.date, 'long')}: ${item.title}`}
+                    aria-label={`${inProgress ? 'Resume' : 'Log'} ${formatDay(item.date, 'long')}: ${workLabel(item)}`}
                   >
                     {inProgress ? 'Resume' : 'Log'}
                   </Link>

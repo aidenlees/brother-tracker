@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { streak } from './metrics/streak'
-import { itemsOn, missedItems, nextItem, pageLabel, sessionLabel, type PlanItem } from './plan'
+import {
+  itemsOn,
+  missedItems,
+  nextItem,
+  pagesLabel,
+  sessionLabel,
+  topicLabel,
+  workLabel,
+  type PlanItem,
+} from './plan'
 
 const item = (id: string, date: string, details: PlanItem['details'] = {}): PlanItem => ({
   id,
@@ -11,16 +20,35 @@ const item = (id: string, date: string, details: PlanItem['details'] = {}): Plan
   sort: 0,
 })
 
-describe('pageLabel', () => {
-  it('adds the PDF pages beside the printed ones', () => {
-    expect(pageLabel({ page_start: 31, page_end: 32, pdf_offset: 2 })).toBe('pp. 31–32 · PDF 33–34')
-    expect(pageLabel({ page_start: 35, page_end: 35, pdf_offset: 2 })).toBe('p. 35 · PDF 37')
+describe('pagesLabel', () => {
+  it('names the printed pages plainly', () => {
+    expect(pagesLabel({ page_start: 31, page_end: 32, pdf_offset: 2 })).toBe('Pages 31–32')
+    expect(pagesLabel({ page_start: 35, page_end: 35 })).toBe('Page 35')
+    expect(pagesLabel({ page_start: null, page_end: null })).toBeNull()
+    expect(pagesLabel({})).toBeNull()
   })
+})
 
-  it('shows printed pages alone without an offset, and nothing without pages', () => {
-    expect(pageLabel({ page_start: 5, page_end: 12 })).toBe('pp. 5–12')
-    expect(pageLabel({ page_start: null, page_end: null, pdf_offset: 2 })).toBeNull()
-    expect(pageLabel({})).toBeNull()
+describe('workLabel', () => {
+  it('says what to do: the pages, else the problems named, else the title', () => {
+    expect(
+      workLabel({ title: 'Practice pp. 31-32', details: { page_start: 31, page_end: 32 } }),
+    ).toBe('Pages 31–32')
+    expect(
+      workLabel({
+        title: 'Mixed check: p. 17 #4(c), p. 33 #8. Correct errors.',
+        details: { page_start: null, problems: ['p. 17 #4(c)', 'p. 33 #8'] },
+      }),
+    ).toBe('p. 17 #4(c), p. 33 #8')
+    expect(workLabel({ title: 'Explain 3 solutions', details: {} })).toBe('Explain 3 solutions')
+  })
+})
+
+describe('topicLabel', () => {
+  it('reads the topic, if the item has one', () => {
+    expect(topicLabel({ topic: 'Solve by Assuming' })).toBe('Solve by Assuming')
+    expect(topicLabel({ topic: ' ' })).toBeNull()
+    expect(topicLabel({})).toBeNull()
   })
 })
 

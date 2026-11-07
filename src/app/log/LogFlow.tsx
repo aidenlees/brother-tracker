@@ -28,7 +28,7 @@ import {
 } from '@/trackers/entry'
 import { FIELD_REGISTRY } from '@/trackers/fields/registry'
 import { defaultDue, retryChanges, retryLabels } from '@/trackers/followups'
-import { pageLabel, sessionLabel, type PlanItem } from '@/trackers/plan'
+import { topicLabel, type PlanItem } from '@/trackers/plan'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
 
 /** How long after the last change the draft is written to the device. */
@@ -221,8 +221,8 @@ export function LogFlow({
   const labelId = `${baseId}-label`
   const helpId = `${baseId}-help`
   const problemId = `${baseId}-problem`
-  const session = plan ? sessionLabel(plan.details) : null
-  const pages = plan ? pageLabel(plan.details) : null
+  // The topic is enough to say where you are; the pages are on Today and in the problem list.
+  const subtitle = plan ? (topicLabel(plan.details) ?? plan.title) : formatDay(date, 'long')
   const help = field.rotatingPrompts ? promptFor(field, details) : field.help
   const describedBy =
     [help ? helpId : null, issue ? problemId : null].filter(Boolean).join(' ') || undefined
@@ -245,17 +245,11 @@ export function LogFlow({
           <p className="text-muted-foreground">Your answers are kept.</p>
         </div>
         <div className="flex flex-col gap-1">
-          <h1 className="flex flex-wrap items-center gap-x-2 text-small text-foreground">
+          <h1 className="flex items-center gap-2 text-small text-foreground">
             <TrackerIcon name={tracker.icon} className="size-4 text-tracker" />
-            {tracker.name}{' '}
-            {session ? <span className="font-normal text-muted-foreground">{session}</span> : null}
+            {tracker.name}
           </h1>
-          <p className="text-body text-foreground">
-            {plan ? plan.title : formatDay(date, 'long')}{' '}
-            {pages ? (
-              <span className="ml-2 text-small text-muted-foreground tabular-nums">{pages}</span>
-            ) : null}
-          </p>
+          <p className="text-lead text-foreground">{subtitle}</p>
         </div>
         {plan && (plan.date < today || existing) ? (
           <label className="flex items-center gap-3 text-small text-muted-foreground">
