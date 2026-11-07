@@ -14,6 +14,7 @@ export const OverviewPage = lazy(() =>
   import('./overview/OverviewPage').then((m) => ({ default: m.OverviewPage })),
 )
 export const LogPage = lazy(() => import('./log/LogPage').then((m) => ({ default: m.LogPage })))
+export const WeekPage = lazy(() => import('./week/WeekPage').then((m) => ({ default: m.WeekPage })))
 export const SessionPage = lazy(() =>
   import('./session/SessionPage').then((m) => ({ default: m.SessionPage })),
 )
