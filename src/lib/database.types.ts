@@ -585,6 +585,7 @@ export type Database = {
       field_check_yes_no: { Args: { field: Json; value: Json }; Returns: string }
       field_is_whole: { Args: { max: number; min: number; value: Json }; Returns: boolean }
       field_option_keys: { Args: { field: Json }; Returns: string[] }
+      set_session_dates: { Args: { moves: Json }; Returns: number }
       today_ny: { Args: Record<PropertyKey, never>; Returns: string }
     }
     Enums: {
