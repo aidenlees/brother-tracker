@@ -5,12 +5,13 @@ import { SCREENS } from './nav'
 import { NotBuiltPage } from './NotBuiltPage'
 import { NotFoundPage } from './NotFoundPage'
 import { RouteError, RouteErrorPage } from './RouteError'
-import { LogPage, LoginPage, OverviewPage, TodayPage } from './pages'
+import { LogPage, LoginPage, OverviewPage, SessionPage, TodayPage } from './pages'
 
 /** Screens built so far; the rest show a "not built yet" page until their phase. */
 const BUILT: Partial<Record<string, ReactNode>> = {
   today: <TodayPage />,
   log: <LogPage />,
+  session: <SessionPage />,
   overview: <OverviewPage />,
 }
 
