@@ -299,10 +299,11 @@ Mark the current phase when it changes.
 - [x] **1. Foundation** (done 2026-11-05, PR #1)
   - Builds: scaffold, full schema + helpers + RLS + audit, `assign_tracker`, pgTAP refusal tests, local fake-user seed, password login, role-based nav shell, `pnpm seed`, CI, Pages deploy.
   - *Done when:* every refusal in rule 11 is tested and failing correctly, the student's own write succeeds, and the site is live.
-- [ ] **2. Student MVP** ← current (branch `phase-2`)
+- [x] **2. Student MVP** (done 2026-11-07, PRs #2–#4)
   - Builds: Today, math log flow, violin inline check-in, followups, offline outbox, backfill for missed dates.
   - *Done when:* the student logs a real session on a laptop in under 2 minutes, unaided.
-- [ ] **3. Admin side + connectors**
+  - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
+- [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
