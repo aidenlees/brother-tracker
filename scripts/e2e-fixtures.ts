@@ -47,18 +47,37 @@ function cliOut(args: string[]): string {
   return run.stdout
 }
 
+/**
+ * How many pages the local bucket holds for a tracker. JSON output, read whichever way
+ * the CLI shapes it (an array of rows, or {rows} when it detects an agent): its default
+ * text table differs between a terminal and CI.
+ */
+function pagesIn(slug: string): number {
+  const out = cliOut([
+    'db',
+    'query',
+    '--read-only',
+    '--output-format',
+    'json',
+    `select count(*)::int as pages from storage.objects where bucket_id = 'book-pages' and name like '${slug}/%'`,
+  ])
+  const start = out.search(/[[{]/)
+  const parsed: unknown = JSON.parse(start < 0 ? 'null' : out.slice(start))
+  const rows: unknown = Array.isArray(parsed) ? parsed : (parsed as { rows?: unknown } | null)?.rows
+  const pages = Array.isArray(rows) ? (rows[0] as { pages?: unknown } | undefined)?.pages : null
+  if (typeof pages !== 'number') {
+    console.error(`pnpm e2e:fixtures: couldn't count the ${slug} pages:\n${out}`)
+    process.exit(1)
+  }
+  return pages
+}
+
 const { trackers } = TrackersFile.parse(
   JSON.parse(readFileSync(join(root, 'seed', 'trackers.json'), 'utf8')),
 )
 for (const tracker of trackers) {
   if (tracker.cadence.type !== 'plan') continue
-  const counted = cliOut([
-    'db',
-    'query',
-    '--read-only',
-    `select count(*) as pages from storage.objects where bucket_id = 'book-pages' and name like '${tracker.slug}/%'`,
-  ])
-  if (!/"pages":\s*0\b/.test(counted)) continue
+  if (pagesIn(tracker.slug) > 0) continue
   const plan = PlanFile.parse(
     JSON.parse(readFileSync(join(root, tracker.cadence.plan_source), 'utf8')),
   )
