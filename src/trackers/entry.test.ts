@@ -10,37 +10,48 @@ const { trackers } = TrackersFile.parse(
 const math = trackers.find((t) => t.slug === 'singapore-math')?.fields ?? []
 const violin = trackers.find((t) => t.slug === 'violin')?.fields ?? []
 
-const practice = { session: 6, assignment: 'Practice pp. 31-32', reading_only: false }
-const reading = { session: 1, assignment: 'pp. 5-12: notes and examples', reading_only: true }
+const practice = {
+  session: 6,
+  assignment: 'Practice pp. 31-32',
+  kind: 'practice',
+  reading_only: false,
+  problems: ['p. 31 #3', 'p. 31 #4', 'p. 32 #5', 'p. 32 #6'],
+}
+const reading = { session: 1, assignment: 'pp. 5-12: notes', kind: 'study', reading_only: true }
+const review = { session: 21, assignment: 'Review pp. 13-35', kind: 'review', reading_only: false }
 
 describe('initialData', () => {
-  it('prefills "What I did" from the plan and starts every other field empty', () => {
-    const data = initialData(math, practice)
-    expect(data.did).toBe('Practice pp. 31-32')
-    expect(data.checklist).toEqual({
-      attempted: false,
-      checked: false,
-      explained: false,
-      retry_planned: false,
+  it('starts every math answer empty, with no problem checked', () => {
+    expect(initialData(math, practice)).toEqual({
+      completed: null,
+      read: null,
+      struggled: [],
+      minutes: null,
     })
-    expect(data.outcomes).toEqual({ I: 0, H: 0, S: 0, U: 0 })
-    expect(data.minutes).toBeNull()
-    expect(data.struggled).toBe('')
-    expect(data.notebook).toBeNull()
+    expect(initialData(violin, null)).toEqual({ practiced: null, focus: '' })
   })
 
-  it('leaves a plan default empty when there is no plan item', () => {
-    expect(initialData(math, null).did).toBe('')
-    expect(initialData(violin, null)).toEqual({ practiced: null, focus: '' })
+  it('prefills a field from the plan item when it names a plan default', () => {
+    const did: FieldDefinition = {
+      key: 'did',
+      type: 'long_text',
+      label: 'What I did',
+      required: true,
+      default: 'plan.assignment',
+    }
+    expect(initialData([did], practice).did).toBe('Practice pp. 31-32')
+    expect(initialData([did], null).did).toBe('')
   })
 })
 
 describe('shownFields', () => {
-  it('hides the tallies on a reading-only session', () => {
-    const keys = (plan: typeof practice) =>
+  it('asks about the problems on practice days, the reading on reading days', () => {
+    const keys = (plan: Record<string, unknown>) =>
       shownFields(math, initialData(math, plan), plan).map((f) => f.key)
-    expect(keys(practice)).toContain('outcomes')
-    expect(keys(reading)).not.toContain('outcomes')
+    expect(keys(practice)).toEqual(['completed', 'struggled', 'minutes'])
+    expect(keys(reading)).toEqual(['read', 'minutes'])
+    // A review lists no problems: the open retries on Today are its list.
+    expect(keys(review)).toEqual(['completed', 'minutes'])
   })
 
   it('shows the violin focus only after "yes"', () => {
@@ -91,8 +102,14 @@ describe('cleanEntry', () => {
 })
 
 describe('promptFor', () => {
-  const reflection = math.find((f) => f.key === 'reflection')
-  if (!reflection) throw new Error('math has no reflection field')
+  const reflection: FieldDefinition = {
+    key: 'reflection',
+    type: 'long_text',
+    label: 'Reflection',
+    required: false,
+    rotatingPrompts: ['One', 'Two', 'Three', 'Four'],
+    rotateBy: 'plan.session',
+  }
 
   it('rotates through the prompts by session number', () => {
     const prompts = reflection.rotatingPrompts ?? []

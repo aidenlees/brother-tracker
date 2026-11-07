@@ -5,15 +5,14 @@ import { formatDay } from '@/lib/dates'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
 import type { Draft } from '@/lib/outbox/types'
 import type { Assignment } from '@/lib/student-data'
-import { cn } from '@/lib/utils'
-import { itemsOn, nextItem, pageLabel, sessionLabel, type PlanItem } from '@/trackers/plan'
+import { itemsOn, nextItem, workLabel, type PlanItem } from '@/trackers/plan'
 import { logPath } from '../log/paths'
 import { SavedNote } from './TrackerCard'
 
 /**
- * A plan-cadence tracker: today's session, ready to log. Once it's saved, the next one
- * shows below it, so the student always knows what comes after; on a day without a
- * session, or before the plan starts, the next one is what the card shows.
+ * A plan-cadence tracker: what today's session asks for, stated plainly ("Pages 31–32"),
+ * ready to log. Once it's saved, one line says what comes next; on a day without a
+ * session, or before the plan starts, that line is the card.
  */
 export function PlanCard({
   assignment,
@@ -52,7 +51,7 @@ export function PlanCard({
         ))}
         {allLogged ? (
           next ? (
-            <UpNext label={`Next: ${formatDay(next.date, 'long')}`} item={next} />
+            <UpNext label="Next" item={next} />
           ) : (
             <p className="text-muted-foreground">That was the last session in the plan.</p>
           )
@@ -62,40 +61,25 @@ export function PlanCard({
   }
 
   if (today < assignment.start_date && next) {
-    return <UpNext label={`First session: ${formatDay(next.date, 'long')}`} item={next} />
+    return <UpNext label="First session" item={next} />
   }
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <p className="text-muted-foreground">
         {next ? 'No session today.' : 'That’s every session in the plan.'}
       </p>
-      {next ? <UpNext label={`Next: ${formatDay(next.date, 'long')}`} item={next} /> : null}
+      {next ? <UpNext label="Next" item={next} /> : null}
     </div>
   )
 }
 
-/** A session's place in the plan, what to do, and its pages. */
-function ItemText({ item, size }: { item: PlanItem; size: 'lead' | 'body' }) {
-  const session = sessionLabel(item.details)
-  const pages = pageLabel(item.details)
-  return (
-    <div className="flex flex-col gap-1">
-      {session ? <p className="text-small text-muted-foreground">{session}</p> : null}
-      <p className={cn('text-foreground', size === 'lead' ? 'text-lead' : 'text-body')}>
-        {item.title}
-      </p>
-      {pages ? <p className="text-small text-muted-foreground tabular-nums">{pages}</p> : null}
-    </div>
-  )
-}
-
-/** The session after today's, set off by a rule in the margin. */
+/** "Next: Sunday, November 8 · Pages 33–34" */
 function UpNext({ label, item }: { label: string; item: PlanItem }) {
   return (
-    <section aria-label={label} className="flex flex-col gap-2 border-l-2 border-border pl-4">
-      <p className="text-small font-medium text-foreground">{label}</p>
-      <ItemText item={item} size="body" />
-    </section>
+    <p className="text-small text-muted-foreground">
+      <span className="font-medium text-foreground">{label}:</span> {formatDay(item.date, 'long')} ·{' '}
+      <span className="tabular-nums">{workLabel(item)}</span>
+    </p>
   )
 }
 
@@ -114,7 +98,7 @@ function Session({
 }) {
   return (
     <div className="flex flex-col gap-4">
-      <ItemText item={item} size="lead" />
+      <p className="text-lead font-medium text-foreground tabular-nums">{workLabel(item)}</p>
       {entry ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <SavedNote sync={entry.sync} reason={entry.reason} fresh={fresh} />

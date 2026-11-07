@@ -8,7 +8,7 @@ import { signedInClient } from './supabase'
  *
  * Logging math takes under 2 minutes; a daily check-in about 10 seconds. A person, not
  * the app, sets most of that time, so this test acts like one: 1.5 s to read each
- * screen, 1 s per tally, typing at 40 words a minute (300 ms a key). If a change adds a
+ * screen, 1 s per tap, typing at 40 words a minute (300 ms a key). If a change adds a
  * step, a field or a slow screen, the total goes over budget and the test fails, with a
  * per-step breakdown in the report. The real check is the student, on the laptop, with a
  * stopwatch (see the Phase 2 plan).
@@ -18,7 +18,8 @@ const TAP_MS = 1000
 const KEY_MS = 300
 const MATH_BUDGET_MS = 120_000
 const VIOLIN_BUDGET_MS = 15_000
-const MAX_STEPS = 9
+/** Did you complete the problems, which ones were hard, minutes. */
+const MAX_STEPS = 3
 /** Pressing Enter to seeing the next screen. */
 const TRANSITION_BUDGET_MS = 300
 
@@ -76,58 +77,30 @@ test.describe('@pace logging at a student’s speed', () => {
     await read()
     await page.getByRole('link', { name: 'Log this session' }).click()
     await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
-    await expect(heading(page)).toContainText("Today's checklist")
+    await expect(heading(page)).toContainText('Did you complete the problems on the pages?')
     lap('open the session')
 
     await read()
-    for (let i = 0; i < 4; i += 1) {
-      if (i > 0) await page.keyboard.press('Tab')
-      await page.waitForTimeout(TAP_MS / 2)
-      await page.keyboard.press('Space')
-    }
-    await next('How each problem went')
-    lap('checklist (4 ticks)')
+    await page.waitForTimeout(TAP_MS)
+    await page.keyboard.press('y')
+    await next('Which problems did you struggle with?')
+    lap('completed: yes')
 
+    // Four problems on pp. 31–32; two were hard. Tab along the boxes, Space to check.
     await read()
-    for (const key of 'iiiiihhs') {
+    for (const keys of [
+      ['Tab', 'Space'],
+      ['Tab', 'Tab', 'Space'],
+    ]) {
       await page.waitForTimeout(TAP_MS)
-      await page.keyboard.press(key)
+      for (const key of keys) await page.keyboard.press(key)
     }
-    await next('Problems to retry')
-    lap('tally (8 problems)')
-
-    await read()
-    await type('p. 31 #4')
-    await page.keyboard.press('Enter')
     await next('Minutes')
-    lap('one retry')
-
-    await read()
-    await type('45')
-    await next('Key idea or error to watch')
-    lap('minutes')
-
-    await read()
-    await type('assume all chickens, then fix the difference')
-    await next('What I did')
-    lap('key idea (45 characters)')
-
-    await read()
-    await type(', checked them all')
-    await next('What I struggled with')
-    lap('what I did (prefilled, +18)')
-
-    await read()
-    await type('p. 31 #4: why the difference is 2 legs a head')
-    await next('Reflection')
-    lap('what I struggled with (45)')
-
-    await read()
-    await next('Notebook photo')
-    lap('reflection (skipped)')
+    lap('struggled (2 of 4 checked)')
 
     await read()
     const steps = Number(/of (\d+)/.exec(await page.getByText(/^\d+ of \d+$/).innerText())?.[1])
+    await type('45')
     await next()
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect(
@@ -135,7 +108,7 @@ test.describe('@pace logging at a student’s speed', () => {
         .getByRole('region', { name: 'Singapore Math', exact: true })
         .getByText('Saved', { exact: true }),
     ).toBeVisible()
-    lap('photo (skipped), save')
+    lap('minutes, save')
 
     const total = Date.now() - start
     await report(testInfo, 'Math log', laps, total)

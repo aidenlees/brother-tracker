@@ -1,20 +1,37 @@
 import { describe, expect, it } from 'vitest'
 import type { FollowupRules } from './definition'
-import { defaultDue, dueLabel, listsAllOpen, retryCount, retryFields } from './followups'
+import { defaultDue, dueLabel, listsAllOpen, retryChanges, retryLabels } from './followups'
 
 const rules: FollowupRules = {
-  enabledFrom: ['outcomes.H', 'outcomes.S', 'outcomes.U'],
-  labelHint: 'p. 31 #4',
+  from: 'struggled',
   defaultDueDays: 2,
   listAllOpenWhen: { 'plan.kind': ['review', 'mixed_check'] },
 }
 
 describe('followup rules', () => {
-  it('count the problems that call for a retry', () => {
-    expect(retryFields(rules)).toEqual(new Set(['outcomes']))
-    expect(retryCount(rules, { outcomes: { I: 5, H: 2, S: 1, U: 0 } })).toBe(3)
-    expect(retryCount(rules, { outcomes: { I: 5 } })).toBe(0)
-    expect(retryCount(rules, {})).toBe(0)
+  it('make a retry of each problem checked as a struggle', () => {
+    expect(retryLabels(rules, { struggled: ['p. 31 #4', 'p. 32 #5(b)'], minutes: 30 })).toEqual([
+      'p. 31 #4',
+      'p. 32 #5(b)',
+    ])
+    expect(retryLabels(rules, { struggled: [] })).toEqual([])
+    expect(retryLabels(rules, { minutes: 30 })).toEqual([])
+  })
+
+  it('bring an entry’s retries in line with what is checked, matched by label', () => {
+    const existing = [
+      { id: 'r1', label: 'p. 31 #3', status: 'open' as const },
+      { id: 'r2', label: 'p. 31 #4', status: 'done' as const },
+      { id: 'r3', label: 'p. 32 #5', status: 'dropped' as const },
+    ]
+    expect(retryChanges(['p. 31 #4', 'p. 32 #5', 'p. 32 #6'], existing)).toEqual({
+      create: ['p. 32 #6'], // new
+      reopen: ['r3'], // dropped before, checked again
+      drop: ['r1'], // open, no longer checked
+    })
+    // A retry already done stays done, checked or not, and is never made again.
+    expect(retryChanges([], existing)).toEqual({ create: [], reopen: [], drop: ['r1'] })
+    expect(retryChanges(['p. 31 #4'], [])).toEqual({ create: ['p. 31 #4'], reopen: [], drop: [] })
   })
 
   it('make retries due two days after the session, never before today', () => {

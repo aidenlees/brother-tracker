@@ -14,6 +14,7 @@ import multi_select from './multi_select'
 import number from './number'
 import page_range from './page_range'
 import photo from './photo'
+import plan_checklist from './plan_checklist'
 import rating_1_5 from './rating_1_5'
 import select from './select'
 import short_text from './short_text'
@@ -35,4 +36,5 @@ export const FIELD_REGISTRY: Record<FieldTypeName, FieldType<unknown>> = {
   page_range,
   yes_no,
   photo,
+  plan_checklist,
 }

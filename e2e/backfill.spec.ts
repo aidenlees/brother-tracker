@@ -51,17 +51,17 @@ test.describe('@backfill late logs and locked entries', () => {
     await expect(missed.getByRole('listitem')).toHaveCount(0)
     await missed.getByText('4 earlier sessions to log').click()
     await expect(missed.getByRole('listitem')).toHaveCount(4)
-    await expect(missed.getByRole('listitem').first()).toContainText('Session 1')
+    await expect(missed.getByRole('listitem').first()).toContainText('Pages 5–12')
 
-    await missed.getByRole('link', { name: /^Log .*pp\. 5-12/ }).click()
+    await missed.getByRole('link', { name: /^Log .*: Pages 5–12$/ }).click()
     await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
     const yesterday = addDays(todayNY(), -1)
     await page.getByLabel('Done on').fill(yesterday)
+    // Session 1 is reading only, so it asks about the reading.
+    await expect(step(page)).toContainText('Did you finish the reading?')
+    await page.getByText('Yes', { exact: true }).click()
 
-    const answers: Record<string, string> = {
-      Minutes: '25',
-      'What I struggled with': 'the notes on p. 9',
-    }
+    const answers: Record<string, string> = { Minutes: '25' }
     for (;;) {
       const label = (await step(page).innerText()).replace(/\s*optional$/, '')
       const answer = answers[label]
@@ -127,7 +127,7 @@ test.describe('@backfill late logs and locked entries', () => {
       plan_item_id: session3,
       field_version: await fieldVersion(client, 'singapore-math'),
       date: todayNY(),
-      data: { checklist: {}, minutes: 20, did: 'Practice pp. 18-21', struggled: 'none' },
+      data: { completed: true, struggled: [], minutes: 20 },
     })
     expect(error).toBeNull()
     await page.goto(`log/${math}/${session3}`)

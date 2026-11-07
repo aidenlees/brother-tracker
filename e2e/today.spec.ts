@@ -16,12 +16,12 @@ test.describe('@today the math card', () => {
     await clearEntries(await signedInClient(ACCOUNTS.student.email), 'singapore-math', todayNY())
   })
 
-  test('shows today’s session with its printed and PDF pages, ready to log', async ({ page }) => {
+  test('says plainly which pages today’s session is, ready to log', async ({ page }) => {
     await page.goto('today')
     const math = card(page, 'Singapore Math')
-    await expect(math.getByText('Session 6 · Solve by Assuming')).toBeVisible()
-    await expect(math.getByText('Practice pp. 31-32', { exact: true })).toBeVisible()
-    await expect(math.getByText('pp. 31–32 · PDF 33–34')).toBeVisible()
+    await expect(math.getByText('Pages 31–32', { exact: true })).toBeVisible()
+    // Nothing else about the session: no session number, assignment text or PDF pages.
+    await expect(math.getByText(/Session 6|Practice pp\.|PDF/)).toHaveCount(0)
     await expect(math.getByRole('link', { name: 'Log this session' })).toHaveAttribute(
       'href',
       /\/log\/[0-9a-f-]{36}\/[0-9a-f-]{36}$/,

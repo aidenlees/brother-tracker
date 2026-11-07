@@ -60,15 +60,20 @@ describe('buildSeedSql', () => {
     expect(sql).toMatch(/"session":80,[^}]*"reading_only":false\}/)
   })
 
-  it('carries the prefill and review-session rules as tracker data', () => {
-    expect(sql).toContain('"default":"plan.assignment"')
+  it('carries the problem list, retry and review-session rules as tracker data', () => {
+    expect(sql).toContain('"optionsFrom":"plan.problems"')
+    expect(sql).toContain('"from":"struggled"')
     expect(sql).toContain('"listAllOpenWhen":{"plan.kind":["review","mixed_check"]}')
   })
 
+  it('carries each session’s problems in its plan item', () => {
+    expect(sql).toContain('"problems":["p. 31 #3","p. 31 #4","p. 32 #5","p. 32 #6"]')
+  })
+
   it('escapes single quotes', () => {
-    // The math checklist label is "Today's checklist".
-    expect(sql).toContain("Today''s checklist")
-    expect(sql).not.toMatch(/Today's/)
+    // The math problem list's help says "Check the ones you couldn't do on your own".
+    expect(sql).toContain("couldn''t do on your own")
+    expect(sql).not.toMatch(/couldn't/)
   })
 
   it('never touches people', () => {

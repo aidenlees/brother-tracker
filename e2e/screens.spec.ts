@@ -14,12 +14,6 @@ const VIEWPORTS = [
 ] as const
 const THEMES = ['light', 'dark'] as const
 
-/** A small PNG (a notebook page with a few ink lines). */
-const PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwCAIAAAAuKetIAAAAUklEQVR42u3WsQkAIAxE0WxiYeP+o9kErLKGCQ9ugQe/uHh5Wy8AAACGAtY+v01CAAAAAAAAAL6QhAAAAAAAAAB8IQkBAAAAAAAA+EISAgDoDygrYcE92cipGQAAAABJRU5ErkJggg==',
-  'base64',
-)
-
 const heading = (page: Page) => page.getByRole('heading', { level: 2 })
 
 for (const viewport of VIEWPORTS) {
@@ -79,42 +73,26 @@ for (const viewport of VIEWPORTS) {
           await page.goto(`log/${math}/${await planItemId(client, 'singapore-math', 6)}`)
           await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
 
-          await page.keyboard.press('Space')
-          await shot(page, 'log-1-checklist')
-          await page.keyboard.press('Enter')
-          await page.keyboard.type('iiihs')
-          await shot(page, 'log-2-tally')
-          await page.keyboard.press('Enter')
-          await page.keyboard.type('p. 31 #4')
-          await page.keyboard.press('Enter')
-          await shot(page, 'log-3-retries')
-          await page.keyboard.press('Enter')
-          await expect(heading(page)).toContainText('Minutes')
           await page.keyboard.press('Enter')
           await expect(page.getByRole('alert')).toBeVisible()
-          await shot(page, 'log-4-required')
+          await shot(page, 'log-1-required')
+          await page.keyboard.press('y')
+          await shot(page, 'log-1-completed')
+          await page.keyboard.press('Enter')
+          await page.keyboard.press('Tab')
+          await page.keyboard.press('Space')
+          await expect(page.getByText('1 checked.')).toBeVisible()
+          await shot(page, 'log-2-struggled')
+          await page.keyboard.press('Enter')
+          await expect(heading(page)).toContainText('Minutes')
           await page.keyboard.type('45')
-          await page.keyboard.press('Enter')
-          await page.keyboard.press('Enter')
-          await shot(page, 'log-6-did')
-          await page.keyboard.press('Enter')
-          await page.keyboard.type('p. 31 #4')
-          await page.keyboard.press('Enter')
-          await shot(page, 'log-8-reflection')
-          await page.keyboard.press('Enter')
-          const chooser = page.waitForEvent('filechooser')
-          await page.getByRole('button', { name: 'Add a photo' }).click()
-          await (
-            await chooser
-          ).setFiles({ name: 'notebook.png', mimeType: 'image/png', buffer: PNG })
-          await expect(page.getByRole('img', { name: 'Notebook photo, as added' })).toBeVisible()
-          await shot(page, 'log-9-photo')
+          await shot(page, 'log-3-minutes')
 
           // Saved: the card shows the check mark and what comes next.
           await page.getByRole('button', { name: 'Save' }).click()
           const card = page.getByRole('region', { name: 'Singapore Math', exact: true })
           await expect(card.getByText('· Synced')).toBeVisible({ timeout: 20_000 })
-          await expect(card.getByRole('region', { name: /^Next: / })).toBeVisible()
+          await expect(card.getByText(/^Next: /)).toBeVisible()
           await settled(page)
           await shot(page, 'today-math-saved')
           await clearEntries(client, 'singapore-math', todayNY())

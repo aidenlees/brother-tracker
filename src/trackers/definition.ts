@@ -22,6 +22,7 @@ export const FIELD_TYPES = [
   'page_range',
   'yes_no',
   'photo',
+  'plan_checklist',
 ] as const
 export type FieldTypeName = (typeof FIELD_TYPES)[number]
 
@@ -64,8 +65,16 @@ export const FieldDefinition = z.strictObject({
   rotateBy: z.string().optional(),
   /** Prefills a new entry from the plan item, e.g. "plan.assignment". The student can edit it. */
   default: planRef.optional(),
+  /**
+   * A plan_checklist's items, read from the plan item ("plan.problems"). The field is
+   * hidden on a plan item whose list is missing or empty.
+   */
+  optionsFrom: planRef.optional(),
 })
 export type FieldDefinition = z.infer<typeof FieldDefinition>
+
+/** A plan item's details (session, kind, reading_only, pages...), or null for daily entries. */
+export type PlanDetails = Readonly<Record<string, unknown>> | null
 
 /** Metric rules are evaluated by the metric engine (Phase 3); stored as given. */
 export const MetricDefinition = z.looseObject({
@@ -82,8 +91,8 @@ export const PacingFlag = z.strictObject({
 })
 
 export const FollowupRules = z.strictObject({
-  enabledFrom: z.array(z.string().min(1)),
-  labelHint: z.string(),
+  /** A plan_checklist field: each item checked in it becomes a followup with that label. */
+  from: key,
   defaultDueDays: z.int().min(0),
   /**
    * On plan items matching every key (any of the listed values), Today lists every
@@ -95,26 +104,43 @@ export const FollowupRules = z.strictObject({
 })
 export type FollowupRules = z.infer<typeof FollowupRules>
 
-export const TrackerDefinition = z.strictObject({
-  slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
-  name: z.string().min(1).max(60),
-  icon: z.string().regex(/^[a-z0-9-]+$/),
-  color: z.enum(TRACKER_ACCENTS),
-  sort: z.int(),
-  cadence: z.discriminatedUnion('type', [
-    z.strictObject({
-      type: z.literal('plan'),
-      plan_source: z.string().regex(/^seed\/[\w-]+\.json$/),
-    }),
-    z.strictObject({ type: z.literal('daily') }),
-  ]),
-  field_version: z.int().min(1),
-  display: z.enum(['inline_on_today_card']).optional(),
-  fields: z.array(FieldDefinition).min(1),
-  metrics: z.array(MetricDefinition),
-  followups: FollowupRules.optional(),
-  pacingFlags: z.array(PacingFlag).optional(),
-})
+export const TrackerDefinition = z
+  .strictObject({
+    slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+    name: z.string().min(1).max(60),
+    icon: z.string().regex(/^[a-z0-9-]+$/),
+    color: z.enum(TRACKER_ACCENTS),
+    sort: z.int(),
+    cadence: z.discriminatedUnion('type', [
+      z.strictObject({
+        type: z.literal('plan'),
+        plan_source: z.string().regex(/^seed\/[\w-]+\.json$/),
+      }),
+      z.strictObject({ type: z.literal('daily') }),
+    ]),
+    field_version: z.int().min(1),
+    display: z.enum(['inline_on_today_card']).optional(),
+    fields: z.array(FieldDefinition).min(1),
+    metrics: z.array(MetricDefinition),
+    followups: FollowupRules.optional(),
+    pacingFlags: z.array(PacingFlag).optional(),
+  })
+  .refine(
+    (t) => t.fields.every((f) => (f.type === 'plan_checklist') === (f.optionsFrom !== undefined)),
+    {
+      message: 'a plan_checklist field needs optionsFrom, and only it can have one',
+      path: ['fields'],
+    },
+  )
+  .refine(
+    (t) =>
+      !t.followups ||
+      t.fields.some((f) => f.key === t.followups?.from && f.type === 'plan_checklist'),
+    {
+      message: 'followups.from must name one of the tracker’s plan_checklist fields',
+      path: ['followups'],
+    },
+  )
 export type TrackerDefinition = z.infer<typeof TrackerDefinition>
 
 export const TrackersFile = z.strictObject({
@@ -123,6 +149,9 @@ export const TrackersFile = z.strictObject({
 })
 
 const isoDate = z.iso.date()
+
+/** "p. 31 #4", or a lettered part, "p. 15 #2(e)". */
+export const PROBLEM_LABEL = /^p\. \d+ #\d+(\([a-z]\))?$/
 
 export const PlanSession = z.strictObject({
   session: z.int().min(1),
@@ -135,6 +164,15 @@ export const PlanSession = z.strictObject({
   page_end: z.int().nullable(),
   kind: z.enum(['study', 'practice', 'review', 'mixed_check']),
   reading_only: z.boolean(),
+  /**
+   * The problems to do, one per problem or lettered part, named by the page they're
+   * printed on ("p. 31 #4", "p. 15 #2(e)"). The math log lists them as checkboxes.
+   */
+  problems: z
+    .array(z.string().regex(PROBLEM_LABEL, 'problems look like "p. 31 #4" or "p. 15 #2(e)"'))
+    .min(1)
+    .refine((labels) => new Set(labels).size === labels.length, 'each problem is listed once')
+    .optional(),
 })
 export type PlanSession = z.infer<typeof PlanSession>
 
