@@ -67,11 +67,9 @@ begin
   where assignment_id = v_math and (details ->> 'session')::int = 5;
   insert into public.entries (assignment_id, plan_item_id, field_version, date, data, owner_id)
   values (v_math, v_item.id, v_version, v_item.date, jsonb_build_object(
-    'checklist', jsonb_build_object('attempted', true, 'checked', true, 'explained', false, 'retry_planned', true),
-    'outcomes', jsonb_build_object('I', 3, 'H', 1, 'S', 0, 'U', 0),
-    'minutes', 35,
-    'did', 'Study pp. 25-29; practice p. 30',
-    'struggled', 'p. 30 #2: setting up the assumption'
+    'completed', true,
+    'struggled', jsonb_build_array('p. 30 #2'),
+    'minutes', 35
   ), v_student)
   returning id into v_entry;
   update public.entries set created_at = now() - interval '2 days' where id = v_entry;
@@ -86,19 +84,18 @@ begin
   update public.entries set created_at = now() - interval '8 days' where id = v_entry;
 
   -- student2: session 20, yesterday, with one retry overdue and one not due yet.
+  -- (Their labels are problems on session 20's pages, as the log flow would make them.)
   select id, date into v_item from public.plan_items
   where assignment_id = v_math2 and (details ->> 'session')::int = 20;
   insert into public.entries (assignment_id, plan_item_id, field_version, date, data, owner_id)
   values (v_math2, v_item.id, v_version, v_item.date, jsonb_build_object(
-    'checklist', jsonb_build_object('attempted', true, 'checked', true, 'explained', true, 'retry_planned', true),
-    'outcomes', jsonb_build_object('I', 4, 'H', 1, 'S', 1, 'U', 0),
-    'minutes', 40,
-    'did', 'Practice pp. 69-70',
-    'struggled', 'p. 69 #11 and p. 70 #3'
+    'completed', true,
+    'struggled', jsonb_build_array('p. 69 #11', 'p. 70 #13'),
+    'minutes', 40
   ), v_student2)
   returning id into v_entry;
   update public.entries set created_at = now() - interval '1 day' where id = v_entry;
   insert into public.followups (entry_id, assignment_id, label, due_date, owner_id, created_at) values
     (v_entry, v_math2, 'p. 69 #11', v_today - 1, v_student2, now() - interval '1 day'),
-    (v_entry, v_math2, 'p. 70 #3', v_today + 1, v_student2, now() - interval '1 day');
+    (v_entry, v_math2, 'p. 70 #13', v_today + 1, v_student2, now() - interval '1 day');
 end $fixtures$;

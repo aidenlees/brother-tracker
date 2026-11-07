@@ -91,8 +91,8 @@ export const PacingFlag = z.strictObject({
 })
 
 export const FollowupRules = z.strictObject({
-  enabledFrom: z.array(z.string().min(1)),
-  labelHint: z.string(),
+  /** A plan_checklist field: each item checked in it becomes a followup with that label. */
+  from: key,
   defaultDueDays: z.int().min(0),
   /**
    * On plan items matching every key (any of the listed values), Today lists every
@@ -104,26 +104,43 @@ export const FollowupRules = z.strictObject({
 })
 export type FollowupRules = z.infer<typeof FollowupRules>
 
-export const TrackerDefinition = z.strictObject({
-  slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
-  name: z.string().min(1).max(60),
-  icon: z.string().regex(/^[a-z0-9-]+$/),
-  color: z.enum(TRACKER_ACCENTS),
-  sort: z.int(),
-  cadence: z.discriminatedUnion('type', [
-    z.strictObject({
-      type: z.literal('plan'),
-      plan_source: z.string().regex(/^seed\/[\w-]+\.json$/),
-    }),
-    z.strictObject({ type: z.literal('daily') }),
-  ]),
-  field_version: z.int().min(1),
-  display: z.enum(['inline_on_today_card']).optional(),
-  fields: z.array(FieldDefinition).min(1),
-  metrics: z.array(MetricDefinition),
-  followups: FollowupRules.optional(),
-  pacingFlags: z.array(PacingFlag).optional(),
-})
+export const TrackerDefinition = z
+  .strictObject({
+    slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+    name: z.string().min(1).max(60),
+    icon: z.string().regex(/^[a-z0-9-]+$/),
+    color: z.enum(TRACKER_ACCENTS),
+    sort: z.int(),
+    cadence: z.discriminatedUnion('type', [
+      z.strictObject({
+        type: z.literal('plan'),
+        plan_source: z.string().regex(/^seed\/[\w-]+\.json$/),
+      }),
+      z.strictObject({ type: z.literal('daily') }),
+    ]),
+    field_version: z.int().min(1),
+    display: z.enum(['inline_on_today_card']).optional(),
+    fields: z.array(FieldDefinition).min(1),
+    metrics: z.array(MetricDefinition),
+    followups: FollowupRules.optional(),
+    pacingFlags: z.array(PacingFlag).optional(),
+  })
+  .refine(
+    (t) => t.fields.every((f) => (f.type === 'plan_checklist') === (f.optionsFrom !== undefined)),
+    {
+      message: 'a plan_checklist field needs optionsFrom, and only it can have one',
+      path: ['fields'],
+    },
+  )
+  .refine(
+    (t) =>
+      !t.followups ||
+      t.fields.some((f) => f.key === t.followups?.from && f.type === 'plan_checklist'),
+    {
+      message: 'followups.from must name one of the tracker’s plan_checklist fields',
+      path: ['followups'],
+    },
+  )
 export type TrackerDefinition = z.infer<typeof TrackerDefinition>
 
 export const TrackersFile = z.strictObject({

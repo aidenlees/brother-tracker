@@ -412,7 +412,6 @@ describe('drafts', () => {
       editing: false,
       fieldVersion: 2,
       data: { minutes: 20 },
-      followups: [],
       step: 3,
       startedAt: '2026-11-10T20:00:00Z',
       updatedAt: '2026-11-10T20:01:00Z',
