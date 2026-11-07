@@ -62,7 +62,9 @@ select is((select count(*)::int from storage.objects where bucket_id = 'book-pag
 reset role;
 
 select tests.authenticate_as('admin');
-select is((select count(*)::int from storage.objects where bucket_id = 'book-pages'),
+-- (Counting only this test's objects: a local stack may also hold the real pages.)
+select is((select count(*)::int from storage.objects
+           where bucket_id = 'book-pages' and (name like 'test-plan/%' or name like 'nobodys-book/%')),
   3, 'the admin reads every page');
 select lives_ok($$insert into storage.objects (bucket_id, name) values ('book-pages', 'test-plan/033.webp')$$,
   'the admin can upload a page');
