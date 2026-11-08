@@ -250,6 +250,11 @@ export function LogFlow({
             {tracker.name}
           </h1>
           <p className="text-lead text-foreground">{subtitle}</p>
+          {plan && plan.date > today && !existing ? (
+            <p className="text-small text-muted-foreground">
+              Planned for {formatDay(plan.date, 'long')}. You’re logging it early.
+            </p>
+          ) : null}
         </div>
         {plan && (plan.date < today || existing) ? (
           <label className="flex items-center gap-3 text-small text-muted-foreground">

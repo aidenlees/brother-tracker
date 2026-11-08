@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
-import { PageImages } from '@/components/BookPages'
+import { PageGrid } from '@/components/BookPages'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
@@ -89,10 +89,15 @@ export function SessionPage() {
             ) : null}
           </div>
         ) : future ? (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <p className="text-muted-foreground">Planned for {formatDay(item.date, 'long')}.</p>
-            <Button asChild variant="link" size="sm" className="h-auto px-0">
-              <Link to={href}>Done it early? Log it</Link>
+          <div className="flex flex-col items-start gap-3">
+            <p className="text-muted-foreground">
+              Planned for {formatDay(item.date, 'long')}. Done it already? Log it now.
+            </p>
+            <Button asChild size="lg" variant="outline">
+              <Link to={href}>
+                {inProgress ? 'Resume logging' : 'Log it early'}
+                <ArrowRight aria-hidden />
+              </Link>
             </Button>
           </div>
         ) : (
@@ -126,7 +131,7 @@ export function SessionPage() {
           </section>
         ) : null}
 
-        <PageImages slug={tracker.slug} pages={bookPages(item.details)} />
+        <PageGrid slug={tracker.slug} pages={bookPages(item.details)} />
       </Page>
     </div>
   )

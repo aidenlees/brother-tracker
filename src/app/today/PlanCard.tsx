@@ -1,4 +1,4 @@
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { Link } from 'react-router'
 import { PageThumbnails } from '@/components/BookPages'
 import { Button } from '@/components/ui/button'
@@ -12,8 +12,9 @@ import { SavedNote } from './TrackerCard'
 
 /**
  * A plan-cadence tracker: what today's session asks for, stated plainly ("Pages 31–32"),
- * ready to log. Once it's saved, one line says what comes next; on a day without a
- * session, or before the plan starts, that line is the card.
+ * ready to log. Once it's saved, one line says what comes next, with a way to log it
+ * early; on a day without a session, or before the plan starts, that line is the card.
+ * Sessions already logged ahead of their day are listed, and Next skips them.
  */
 export function PlanCard({
   assignment,
@@ -36,8 +37,22 @@ export function PlanCard({
   today: string
 }) {
   const todays = itemsOn(items, today)
-  const next = nextItem(items, today)
   const entryFor = (item: PlanItem) => entries.find((e) => e.plan_item_id === item.id)
+  const next = nextItem(
+    items.filter((item) => entryFor(item) === undefined),
+    today,
+  )
+  const ahead = itemsAhead(items, today).filter((item) => entryFor(item) !== undefined)
+  const upNext = (label: string) =>
+    next ? (
+      <UpNext
+        label={label}
+        item={next}
+        href={sessionPath(assignment.id, next.id)}
+        logHref={logPath(assignment.id, { planItemId: next.id })}
+        inProgress={drafts.some((d) => d.planItemId === next.id)}
+      />
+    ) : null
 
   if (todays.length > 0) {
     const allLogged = todays.every((item) => entryFor(item) !== undefined)
@@ -56,36 +71,86 @@ export function PlanCard({
           />
         ))}
         {allLogged ? (
-          next ? (
-            <UpNext label="Next" item={next} href={sessionPath(assignment.id, next.id)} />
-          ) : (
-            <p className="text-muted-foreground">That was the last session in the plan.</p>
-          )
+          <div className="flex flex-col gap-2">
+            <Ahead items={ahead} assignmentId={assignment.id} />
+            {upNext('Next') ?? (
+              <p className="text-muted-foreground">That was the last session in the plan.</p>
+            )}
+          </div>
         ) : null}
       </div>
     )
   }
 
-  if (today < assignment.start_date && next) {
-    return <UpNext label="First session" item={next} href={sessionPath(assignment.id, next.id)} />
-  }
+  if (today < assignment.start_date && next && ahead.length === 0) return upNext('First session')
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted-foreground">
         {next ? 'No session today.' : 'That’s every session in the plan.'}
       </p>
-      {next ? <UpNext label="Next" item={next} href={sessionPath(assignment.id, next.id)} /> : null}
+      <Ahead items={ahead} assignmentId={assignment.id} />
+      {upNext('Next')}
     </div>
   )
 }
 
-/** "Next: Sunday, November 8 · Pages 33–34", opening that session's pages. */
-function UpNext({ label, item, href }: { label: string; item: PlanItem; href: string }) {
+/** Future sessions, in plan order. */
+function itemsAhead(items: readonly PlanItem[], today: string): PlanItem[] {
+  return items
+    .filter((item) => item.date > today)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sort - b.sort))
+}
+
+/** "Logged early: Monday, November 9 · Pages 14–19", for each session done ahead of its day. */
+function Ahead({ items, assignmentId }: { items: PlanItem[]; assignmentId: string }) {
+  if (items.length === 0) return null
   return (
-    <Link to={href} className="self-start text-small text-muted-foreground hover:text-foreground">
-      <span className="font-medium text-foreground">{label}:</span> {formatDay(item.date, 'long')} ·{' '}
-      <span className="tabular-nums">{workLabel(item)}</span>
-    </Link>
+    <ul className="flex flex-col gap-1 text-small">
+      {items.map((item) => (
+        <li key={item.id}>
+          <Link
+            to={sessionPath(assignmentId, item.id)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <Check aria-hidden className="size-4 text-tracker" />
+            <span>
+              <span className="text-foreground">Logged early:</span> {formatDay(item.date, 'long')}{' '}
+              · <span className="tabular-nums">{workLabel(item)}</span>
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/**
+ * "Next: Monday, November 9 · Pages 14–19", opening that session's pages, and logging it
+ * early for a student who has done it already.
+ */
+function UpNext({
+  label,
+  item,
+  href,
+  logHref,
+  inProgress,
+}: {
+  label: string
+  item: PlanItem
+  href: string
+  logHref: string
+  inProgress: boolean
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <Link to={href} className="text-small text-muted-foreground hover:text-foreground">
+        <span className="font-medium text-foreground">{label}:</span> {formatDay(item.date, 'long')}{' '}
+        · <span className="tabular-nums">{workLabel(item)}</span>
+      </Link>
+      <Button asChild variant="link" size="sm" className="h-auto px-0">
+        <Link to={logHref}>{inProgress ? 'Resume logging it' : 'Done it early? Log it'}</Link>
+      </Button>
+    </div>
   )
 }
 
