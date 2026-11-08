@@ -1,7 +1,9 @@
 import { ArrowRight } from 'lucide-react'
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
+import { useAppUpdate } from '@/lib/app-update'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
@@ -70,15 +72,7 @@ function AssignmentCard({
   today: string
 }) {
   const tracker = assignment.tracker
-  if (!tracker) {
-    return (
-      <TrackerCard name={assignment.trackerName} icon="circle" color="ink-blue">
-        <p className="text-muted-foreground">
-          This tracker can’t be shown in this version of the app. Ask your admin.
-        </p>
-      </TrackerCard>
-    )
-  }
+  if (!tracker) return <NeedsNewerApp name={assignment.trackerName} />
 
   const entries = data.entries.filter((e) => e.assignment_id === assignment.id)
   const items = data.planItems.filter((item) => item.assignment_id === assignment.id)
@@ -190,5 +184,23 @@ function DailyLog({
         <ArrowRight aria-hidden />
       </Link>
     </Button>
+  )
+}
+
+/**
+ * A tracker whose definition this version of the app can't read: almost always a newer
+ * definition than the code on this device, so look for the new version at once.
+ */
+function NeedsNewerApp({ name }: { name: string }) {
+  const { ready, check } = useAppUpdate()
+  useEffect(check, [check])
+  return (
+    <TrackerCard name={name} icon="circle" color="ink-blue">
+      <p className="text-muted-foreground">
+        {ready
+          ? 'This needs the new version of the app. Choose Update above.'
+          : 'This needs a newer version of the app. Close every tab of it, then open it again. If you still see this, ask your admin.'}
+      </p>
+    </TrackerCard>
   )
 }

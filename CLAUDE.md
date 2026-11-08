@@ -280,6 +280,7 @@ Navigation shows only the screens a role can use.
 - **Access.** AA contrast, full keyboard use, visible focus, `prefers-reduced-motion` respected.
 - **Copy.** Short, second person, specific ("Your table made the pattern clear"), never generic praise.
 - **Offline.** An IndexedDB outbox, with "Saved on this laptop, will sync" vs "Synced" shown in the UI.
+- **New versions.** The app looks for one when it opens, when it comes back into view and hourly; once it's downloaded, one line above the page offers Update. It never reloads by itself.
 
 ## Connectors (Edge Functions + pg_cron). Each one is a switch: it skips quietly if its secrets are unset.
 
