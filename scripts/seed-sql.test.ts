@@ -16,9 +16,9 @@ describe('seed files', () => {
     expect(trackers.map((t) => t.slug)).toEqual(['singapore-math', 'violin'])
   })
 
-  it('hold the 80-session math plan', () => {
-    expect(math.sessions).toHaveLength(80)
-    expect(math.sessions[0]?.date).toBe('2026-11-01')
+  it('hold the six-day math plan', () => {
+    expect(math.sessions).toHaveLength(54)
+    expect(math.sessions[0]?.date).toBe('2026-11-08')
   })
 })
 
@@ -37,7 +37,7 @@ describe('buildSeedSql', () => {
   it('upserts the plan template by tracker and name', () => {
     expect(sql).toContain(`'${SEED_TEMPLATE_NAME}'`)
     expect(sql).toContain('on conflict (tracker_id, name) do update set')
-    expect(sql).toContain("date '2026-11-01'")
+    expect(sql).toContain("date '2026-11-08'")
   })
 
   it('stores pacing flags under pacing_flags and drops the seed-only plan_source', () => {
@@ -47,7 +47,7 @@ describe('buildSeedSql', () => {
   })
 
   it('keeps each session number in the plan item details', () => {
-    expect(sql).toContain('"details":{"session":80,')
+    expect(sql).toContain('"details":{"session":54,')
   })
 
   it('copies the PDF offset into items that have pages, and only those', () => {
@@ -56,8 +56,8 @@ describe('buildSeedSql', () => {
     expect(math.pdf_offset).toBe(2)
     expect(withPages).toBeLessThan(items)
     expect(sql.match(/"pdf_offset":2/g)).toHaveLength(withPages)
-    // Session 80 has no pages.
-    expect(sql).toMatch(/"session":80,[^}]*"reading_only":false\}/)
+    // Session 54, the last mixed check, has no pages.
+    expect(sql).toMatch(/"session":54,[^}]*"reading_only":false,"problems":\[[^\]]*\]\}/)
   })
 
   it('carries the problem list, retry and review-session rules as tracker data', () => {
@@ -67,7 +67,7 @@ describe('buildSeedSql', () => {
   })
 
   it('carries each session’s problems in its plan item', () => {
-    expect(sql).toContain('"problems":["p. 31 #3","p. 31 #4","p. 32 #5","p. 32 #6"]')
+    expect(sql).toContain('"problems":["p. 30 #1","p. 30 #2","p. 31 #3","p. 31 #4"]')
   })
 
   it('escapes single quotes', () => {

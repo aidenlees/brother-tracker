@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { moveSessions, planWeekdays, problemIndex, problemsFor } from './plan-edit'
+import { dayOffMoves, moveSessions, planWeekdays, problemIndex, problemsFor } from './plan-edit'
 import type { PlanItem } from './plan'
 
 const item = (id: string, date: string, sort = 0): PlanItem => ({
@@ -99,5 +99,33 @@ describe('problems for a page range', () => {
       'p. 32 #5(b)',
     ])
     expect(problemsFor(index, 33, 34)).toEqual([])
+  })
+})
+
+describe('dayOffMoves', () => {
+  // Sunday to Friday, resting on Saturday: the six-day plan.
+  const six = [
+    item('d1', '2026-11-12'), // Thu
+    item('d2', '2026-11-13'), // Fri
+    item('d3', '2026-11-15'), // Sun
+    item('d4', '2026-11-16'), // Mon
+    item('d5', '2026-11-17'), // Tue
+    item('d6', '2026-11-18'), // Wed
+    item('d7', '2026-11-19'), // Thu
+  ]
+
+  it('moves that day’s session and every later one to the next plan day, skipping the rest day', () => {
+    expect(dayOffMoves(six, '2026-11-13')).toEqual([
+      { id: 'd2', date: '2026-11-15' },
+      { id: 'd3', date: '2026-11-16' },
+      { id: 'd4', date: '2026-11-17' },
+      { id: 'd5', date: '2026-11-18' },
+      { id: 'd6', date: '2026-11-19' },
+      { id: 'd7', date: '2026-11-20' },
+    ])
+  })
+
+  it('moves nothing on a day with nothing planned', () => {
+    expect(dayOffMoves(six, '2026-11-14')).toBeNull()
   })
 })

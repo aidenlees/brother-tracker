@@ -12,7 +12,7 @@ import {
 import { localSql, signedInClient } from './supabase'
 
 /**
- * Backfill and the 7-day window, against the fixtures: math sessions 1–4 are past and
+ * Backfill and the 7-day window, against the fixtures: math sessions 1–3 are past and
  * unlogged; violin has an entry dated and logged 8 days ago.
  */
 const card = (page: Page, name: string) => page.getByRole('region', { name, exact: true })
@@ -46,19 +46,19 @@ test.describe('@backfill late logs and locked entries', () => {
   }) => {
     await page.goto('today')
     const math = card(page, 'Singapore Math')
-    const missed = math.getByRole('region', { name: '4 earlier sessions to log' })
+    const missed = math.getByRole('region', { name: '3 earlier sessions to log' })
     // Folded under one line until opened.
     await expect(missed.getByRole('listitem')).toHaveCount(0)
-    await missed.getByText('4 earlier sessions to log').click()
-    await expect(missed.getByRole('listitem')).toHaveCount(4)
-    await expect(missed.getByRole('listitem').first()).toContainText('Pages 5–12')
+    await missed.getByText('3 earlier sessions to log').click()
+    await expect(missed.getByRole('listitem')).toHaveCount(3)
+    await expect(missed.getByRole('listitem').first()).toContainText('Pages 5–13')
 
-    await missed.getByRole('link', { name: /^Log .*: Pages 5–12$/ }).click()
+    await missed.getByRole('link', { name: /^Log .*: Pages 5–13$/ }).click()
     await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
     const yesterday = addDays(todayNY(), -1)
     await page.getByLabel('Done on').fill(yesterday)
-    // Session 1 is reading only, so it asks about the reading.
-    await expect(step(page)).toContainText('Did you finish the reading?')
+    // Session 1 reads the examples, then has problems on p. 13.
+    await expect(step(page)).toContainText('Did you complete the problems on the pages?')
     await page.getByText('Yes', { exact: true }).click()
 
     const answers: Record<string, string> = { Minutes: '25' }
@@ -74,12 +74,13 @@ test.describe('@backfill late logs and locked entries', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
 
     const client = await signedInClient(ACCOUNTS.student.email)
+    // (Session 4, yesterday's, was logged on its day by the fixtures.)
     await expect
       .poll(async () =>
         (await entriesOn(client, 'singapore-math', yesterday)).map((e) => e.plan_item_id),
       )
-      .toEqual([await planItemId(client, 'singapore-math', 1)])
-    await expect(math.getByRole('region', { name: '3 earlier sessions to log' })).toBeVisible()
+      .toContain(await planItemId(client, 'singapore-math', 1))
+    await expect(math.getByRole('region', { name: '2 earlier sessions to log' })).toBeVisible()
   })
 
   test('the violin week strip logs a day that was missed', async ({ page }) => {

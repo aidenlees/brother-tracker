@@ -72,7 +72,9 @@ export function LogPage() {
   if (!assignment || !tracker || (planItemId && !plan)) {
     return <Problem title="Log session">This session isn’t one of yours.</Problem>
   }
-  if (date > today || date < assignment.start_date) {
+  // A plan session can be logged any day up to today, even ahead of its own day (done
+  // early); a daily check-in only for days from the start.
+  if (date > today || (!planItemId && date < assignment.start_date)) {
     return (
       <Problem title={tracker.name}>
         You can log days from {formatDay(assignment.start_date, 'long')} up to today.

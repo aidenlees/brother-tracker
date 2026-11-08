@@ -4,7 +4,7 @@ import { clearEntries, entriesOn, longDay, todayNY } from './data'
 import { signedInClient } from './supabase'
 
 /**
- * Today, against the fixtures (scripts/e2e-fixtures.sql): the student has math session 6
+ * Today, against the fixtures (scripts/e2e-fixtures.sql): the student has math session 5
  * today and violin; student2 is on a review day.
  */
 const card = (page: Page, name: string) => page.getByRole('region', { name, exact: true })
@@ -19,9 +19,9 @@ test.describe('@today the math card', () => {
   test('says plainly which pages today’s session is, ready to log', async ({ page }) => {
     await page.goto('today')
     const math = card(page, 'Singapore Math')
-    await expect(math.getByText('Pages 31–32', { exact: true })).toBeVisible()
+    await expect(math.getByText('Pages 32–35', { exact: true })).toBeVisible()
     // Nothing else about the session: no session number, assignment text or PDF pages.
-    await expect(math.getByText(/Session 6|Practice pp\.|PDF/)).toHaveCount(0)
+    await expect(math.getByText(/Session 5|Do the problems|PDF/)).toHaveCount(0)
     await expect(math.getByRole('link', { name: 'Log this session' })).toHaveAttribute(
       'href',
       /\/log\/[0-9a-f-]{36}\/[0-9a-f-]{36}$/,
@@ -36,8 +36,10 @@ test.describe('@today the math card', () => {
     await expect(todays).toHaveAttribute('aria-current', 'date')
     const logHref = await math.getByRole('link', { name: 'Log this session' }).getAttribute('href')
     expect(await todays.getAttribute('href')).toBe(logHref)
-    // Days without a session are marked, not linked.
-    await expect(week.getByRole('img', { name: /: No session$/ })).not.toHaveCount(0)
+    // Days without a session (here, before the plan started) are marked, not linked.
+    await expect(
+      week.getByRole('img', { name: /: (No session|before the start)$/ }),
+    ).not.toHaveCount(0)
   })
 })
 

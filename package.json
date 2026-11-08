@@ -18,6 +18,7 @@
     "e2e": "playwright test",
     "seed": "node scripts/seed.ts",
     "book:pages": "node scripts/book-pages.ts",
+    "plan:math": "node scripts/plan-math.ts",
     "e2e:fixtures": "node scripts/e2e-fixtures.ts",
     "env:local": "node scripts/local-env.ts",
     "gen:icons": "pwa-assets-generator",

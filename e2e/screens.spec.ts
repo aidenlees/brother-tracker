@@ -77,10 +77,10 @@ for (const viewport of VIEWPORTS) {
           await page
             .getByLabel('Student and tracker')
             .selectOption({ label: 'Sam · Singapore Math' })
-          await expect(page.getByText(/Session 6 · Solve by Assuming/).first()).toBeVisible()
+          await expect(page.getByText(/Session 5 · Solve by Assuming/).first()).toBeVisible()
           await settled(page)
           await shot(page, 'plan')
-          await page.getByRole('button', { name: /^Edit .*Session 7 · Solve by Assuming$/ }).click()
+          await page.getByRole('button', { name: /^Edit .*Session 8 · Working Backward$/ }).click()
           await expect(page.getByRole('form', { name: /^Edit / })).toBeVisible()
           await shot(page, 'plan-edit')
         })
@@ -93,7 +93,7 @@ for (const viewport of VIEWPORTS) {
           const client = await signedInClient(ACCOUNTS.student.email)
           await clearEntries(client, 'singapore-math', todayNY())
           const math = await assignmentId(client, 'singapore-math')
-          await page.goto(`log/${math}/${await planItemId(client, 'singapore-math', 6)}`)
+          await page.goto(`log/${math}/${await planItemId(client, 'singapore-math', 5)}`)
           await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
 
           await page.keyboard.press('Enter')
@@ -126,10 +126,15 @@ for (const viewport of VIEWPORTS) {
           await expect(page.getByRole('heading', { level: 1, name: 'My week' })).toBeVisible()
           await settled(page)
           await shot(page, 'week')
-          await page.getByRole('link', { name: /^Pages 31–32/ }).click()
-          await expect(page.getByRole('img', { name: 'Page 31 of the book' })).toBeVisible()
+          await page.getByRole('link', { name: /^Pages 32–35/ }).click()
+          await expect(page.getByRole('img', { name: 'Page 32 of the book' })).toBeVisible()
           await settled(page)
           await shot(page, 'session')
+          // A page opens full size, a step from the next one.
+          await page.getByRole('button', { name: 'Open page 33' }).click()
+          await expect(page.getByRole('dialog', { name: /^Page 33/ })).toBeVisible()
+          await settled(page)
+          await shot(page, 'session-viewer')
         })
 
         test('Today: saved on this device, then synced', async ({ page, context }) => {

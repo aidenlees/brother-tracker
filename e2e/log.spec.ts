@@ -5,9 +5,9 @@ import { addDays, assignmentId, clearEntries, entriesOn, planItemId, todayNY } f
 import { signedInClient } from './supabase'
 
 /**
- * The math log flow, against the fixtures: session 6 (pp. 31–32: problems 3–6) is today,
- * session 1 (reading only) is past and unlogged, session 5 was logged two days ago with
- * p. 30 #2 checked as a struggle.
+ * The math log flow, against the fixtures: session 5 (pp. 32–35: problems 5–12) is today,
+ * sessions 1–3 are past and unlogged, session 4 was logged yesterday with p. 30 #2
+ * checked as a struggle, and session 6 (pp. 36–40) is tomorrow.
  */
 test.describe('@log the math log flow', () => {
   test.use({ storageState: authFile('student') })
@@ -44,13 +44,13 @@ test.describe('@log the math log flow', () => {
     // One box per problem on the session's pages; Tab moves, Space checks, Enter goes on.
     await expect(step(page)).toContainText(STRUGGLED)
     await expect(progress(page)).toHaveText('2 of 3')
-    await expect(page.getByRole('checkbox')).toHaveCount(4)
-    await expect(page.getByRole('checkbox', { name: 'p. 31 #3' })).toBeFocused()
-    await page.keyboard.press('Tab')
-    await page.keyboard.press('Space') // p. 31 #4
-    await page.keyboard.press('Tab')
+    await expect(page.getByRole('checkbox')).toHaveCount(8)
+    await expect(page.getByRole('checkbox', { name: 'p. 32 #5' })).toBeFocused()
     await page.keyboard.press('Tab')
     await page.keyboard.press('Space') // p. 32 #6
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Tab')
+    await page.keyboard.press('Space') // p. 33 #8
     await expect(page.getByText('2 checked.')).toBeVisible()
     await page.keyboard.press('Enter')
 
@@ -62,14 +62,14 @@ test.describe('@log the math log flow', () => {
     const math = page.getByRole('region', { name: 'Singapore Math' })
     await expect(math.getByText('· Synced')).toBeVisible()
     // With today's session saved, one line says what comes next.
-    await expect(math.getByText(/^Next: .* · Pages 33–34$/)).toBeVisible()
+    await expect(math.getByText(/^Next: .* · Pages 36–40$/)).toBeVisible()
 
     const client = await signedInClient(ACCOUNTS.student.email)
     const [entry] = await entriesOn(client, 'singapore-math', todayNY())
-    expect(entry?.plan_item_id).toBe(await planItemId(client, 'singapore-math', 6))
+    expect(entry?.plan_item_id).toBe(await planItemId(client, 'singapore-math', 5))
     expect(entry?.data).toEqual({
       completed: true,
-      struggled: ['p. 31 #4', 'p. 32 #6'],
+      struggled: ['p. 32 #6', 'p. 33 #8'],
       minutes: 45,
     })
     await expect
@@ -82,21 +82,60 @@ test.describe('@log the math log flow', () => {
         return data
       })
       .toEqual([
-        { label: 'p. 31 #4', due_date: addDays(todayNY(), 2), status: 'open' },
         { label: 'p. 32 #6', due_date: addDays(todayNY(), 2), status: 'open' },
+        { label: 'p. 33 #8', due_date: addDays(todayNY(), 2), status: 'open' },
       ])
   })
 
-  test('a reading-only session asks about the reading, then the minutes', async ({ page }) => {
+  test('tomorrow’s session, done early, is logged today and shown as done', async ({ page }) => {
     const client = await signedInClient(ACCOUNTS.student.email)
-    const math = await assignmentId(client, 'singapore-math')
-    await page.goto(`log/${math}/${await planItemId(client, 'singapore-math', 1)}`)
-    await expect(progress(page)).toHaveText('1 of 2')
-    await expect(step(page)).toContainText('Did you finish the reading?')
+    const tomorrow = await planItemId(client, 'singapore-math', 6)
+    await open(page)
+    // Log today's first, so Today's card moves on to what's next.
     await page.keyboard.press('y')
-    await page.getByRole('button', { name: 'Next' }).click()
-    await expect(step(page)).toContainText('Minutes')
-    await expect(page.getByRole('checkbox')).toHaveCount(0)
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('40')
+    await page.keyboard.press('Enter')
+    const math = page.getByRole('region', { name: 'Singapore Math' })
+    await expect(math.getByText(/^Next: .* · Pages 36–40$/)).toBeVisible()
+
+    await math.getByRole('link', { name: 'Done it early? Log it' }).click()
+    await expect(page.getByText(/^Planned for .*\. You’re logging it early\.$/)).toBeVisible()
+    await expect(page.getByText('Looking for a Pattern', { exact: true })).toBeVisible()
+    await page.keyboard.press('y')
+    await page.keyboard.press('Enter')
+    await page
+      .locator('label', { has: page.getByRole('checkbox', { name: 'p. 36 #1(a)' }) })
+      .click()
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('50')
+    await page.keyboard.press('Enter')
+
+    // Back on Today: it says so, and Next moves on to the session after.
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+    await expect(math.getByText(/^Logged early: .* · Pages 36–40$/)).toBeVisible()
+    await expect(math.getByText(/^Next: .* · Pages 41–45$/)).toBeVisible()
+
+    // The entry is dated today (when it was done), for tomorrow's session; its retry is
+    // due two days after the work, not after the planned day.
+    await expect
+      .poll(async () => {
+        const entries = await entriesOn(client, 'singapore-math', todayNY())
+        return entries.find((e) => e.plan_item_id === tomorrow)?.data
+      })
+      .toEqual({ completed: true, struggled: ['p. 36 #1(a)'], minutes: 50 })
+    const entries = await entriesOn(client, 'singapore-math', todayNY())
+    const early = entries.find((e) => e.plan_item_id === tomorrow)
+    await expect
+      .poll(async () => {
+        const { data } = await client
+          .from('followups')
+          .select('label, due_date')
+          .eq('entry_id', early?.id ?? '')
+        return data
+      })
+      .toEqual([{ label: 'p. 36 #1(a)', due_date: addDays(todayNY(), 2) }])
   })
 
   test('closing mid-way keeps the answers; Today offers to resume', async ({ page }) => {
@@ -104,7 +143,7 @@ test.describe('@log the math log flow', () => {
     await page.keyboard.press('y')
     await page.keyboard.press('Enter')
     await page.keyboard.press('Tab')
-    await page.keyboard.press('Space') // p. 31 #4
+    await page.keyboard.press('Space') // p. 32 #6
     await page.keyboard.press('Enter')
     await expect(step(page)).toContainText('Minutes')
     await page.keyboard.type('30')
@@ -115,7 +154,7 @@ test.describe('@log the math log flow', () => {
     await expect(progress(page)).toHaveText('3 of 3')
     await expect(page.getByRole('textbox')).toHaveValue('30')
     await page.getByRole('button', { name: 'Back' }).click()
-    await expect(page.getByRole('checkbox', { name: 'p. 31 #4' })).toBeChecked()
+    await expect(page.getByRole('checkbox', { name: 'p. 32 #6' })).toBeChecked()
 
     await page.getByRole('link', { name: 'Back to Today' }).click()
     await expect(page.getByRole('link', { name: 'Resume logging' })).toBeVisible()
@@ -141,8 +180,8 @@ test.describe('@log the math log flow', () => {
   }) => {
     const client = await signedInClient(ACCOUNTS.student.email)
     const math = await assignmentId(client, 'singapore-math')
-    const session5 = await planItemId(client, 'singapore-math', 5)
-    await page.goto(`log/${math}/${session5}`)
+    const session4 = await planItemId(client, 'singapore-math', 4)
+    await page.goto(`log/${math}/${session4}`)
     await expect(step(page)).toContainText(COMPLETED)
     await page.getByRole('button', { name: 'Next' }).click()
     await expect(page.getByRole('checkbox', { name: 'p. 30 #2' })).toBeChecked()
@@ -157,7 +196,7 @@ test.describe('@log the math log flow', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
     await expect
       .poll(async () => {
-        const { data } = await client.from('entries').select('data').eq('plan_item_id', session5)
+        const { data } = await client.from('entries').select('data').eq('plan_item_id', session4)
         return (data as { data: { minutes: number } }[]).map((e) => e.data.minutes)
       })
       .toEqual([minutes])
