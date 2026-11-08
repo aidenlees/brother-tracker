@@ -60,6 +60,15 @@ export function moveSessions(
   return moves
 }
 
+/**
+ * A day off: the session on that date and every later one move to the next plan day,
+ * so the rest day stays free. Null when nothing is planned that day.
+ */
+export function dayOffMoves(items: readonly PlanItem[], date: string): Move[] | null {
+  const first = [...items].sort(byDate).find((item) => item.date === date)
+  return first ? moveSessions(items, first.id, 1) : null
+}
+
 /** Every problem in the book, by the page it's printed on, from the plan's sessions. */
 export function problemIndex(
   sessions: readonly { problems?: readonly string[] | undefined }[],

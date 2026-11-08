@@ -16,7 +16,14 @@ import {
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
 import { pagesLabel, sessionLabel, type PlanItem } from '@/trackers/plan'
-import { moveSessions, problemIndex, problemsFor, type Move } from '@/trackers/plan-edit'
+import { minutesLabel, sessionMinutes } from '@/trackers/estimate'
+import {
+  dayOffMoves,
+  moveSessions,
+  problemIndex,
+  problemsFor,
+  type Move,
+} from '@/trackers/plan-edit'
 import { weekStart } from '@/trackers/schedule'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
 
@@ -103,17 +110,26 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
   const [editing, setEditing] = useState<string | null>(null)
   const [showEarlier, setShowEarlier] = useState(false)
   const [notice, setNotice] = useState<{ text: string; undo?: Move[] } | null>(null)
+  // The book's problems by page, from the baseline's sessions that work pages (a mixed
+  // check's named problems would add a whole problem beside its parts).
   const index = useMemo(
     () =>
       problemIndex(
-        (template.data?.items ?? []).map((i) => ({
-          problems: Array.isArray(i.details.problems)
-            ? i.details.problems.filter((p): p is string => typeof p === 'string')
-            : undefined,
-        })),
+        (template.data?.items ?? [])
+          .filter((i) => typeof i.details.page_start === 'number')
+          .map((i) => ({
+            problems: Array.isArray(i.details.problems)
+              ? i.details.problems.filter((p): p is string => typeof p === 'string')
+              : undefined,
+          })),
       ),
     [template.data],
   )
+  const estimate = (details: PlanItem['details']) => {
+    if (index.size === 0) return null
+    const minutes = sessionMinutes(index, details)
+    return minutes === null ? null : minutesLabel(minutes)
+  }
 
   if (sessions.status === 'pending') {
     return (
@@ -135,27 +151,44 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
   const earlier = [...weeks.keys()].filter((w) => w < thisWeek)
   const shown = [...weeks].filter(([w]) => showEarlier || w >= thisWeek)
 
-  function shift(item: PlanItem, direction: 1 | -1) {
-    const moves = moveSessions(items, item.id, direction)
-    if (!moves) {
-      setNotice({ text: 'No room to move it earlier: the session before is on that day.' })
-      return
-    }
+  function apply(moves: Move[], text: string) {
     const before = moves.map((m) => ({
       id: m.id,
       date: items.find((i) => i.id === m.id)?.date ?? m.date,
     }))
     move.mutate(moves, {
       onSuccess: () => {
-        setNotice({
-          text: `Moved ${String(moves.length)} session${moves.length === 1 ? '' : 's'} ${direction === 1 ? 'later' : 'earlier'}, from ${formatDay(moves[0]?.date ?? item.date, 'long')}.`,
-          undo: before,
-        })
+        setNotice({ text, undo: before })
       },
       onError: (error) => {
         setNotice({ text: error.message })
       },
     })
+  }
+
+  function shift(item: PlanItem, direction: 1 | -1) {
+    const moves = moveSessions(items, item.id, direction)
+    if (!moves) {
+      setNotice({ text: 'No room to move it earlier: the session before is on that day.' })
+      return
+    }
+    apply(
+      moves,
+      `Moved ${String(moves.length)} session${moves.length === 1 ? '' : 's'} ${direction === 1 ? 'later' : 'earlier'}, from ${formatDay(moves[0]?.date ?? item.date, 'long')}.`,
+    )
+  }
+
+  function dayOff(date: string) {
+    const moves = dayOffMoves(items, date)
+    if (!moves) {
+      setNotice({ text: `Nothing is planned on ${formatDay(date, 'long')}, so nothing moved.` })
+      return
+    }
+    const later = moves.length - 1
+    apply(
+      moves,
+      `${formatDay(date, 'long')} is a day off: its session and the ${String(later)} after it moved one plan day later.`,
+    )
   }
 
   return (
@@ -190,6 +223,8 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
         </div>
       ) : null}
 
+      <DayOff today={today} busy={move.isPending} onDayOff={dayOff} />
+
       {earlier.length > 0 ? (
         <Button
           variant="outline"
@@ -220,6 +255,7 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
               <li key={item.id} className="border-b border-border last:border-b-0">
                 <SessionRow
                   item={item}
+                  estimate={estimate(item.details)}
                   icon={assignment.tracker.icon}
                   logged={logged.data?.has(item.id) ?? false}
                   busy={move.isPending}
@@ -270,6 +306,7 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
 
 function SessionRow({
   item,
+  estimate,
   icon,
   logged,
   busy,
@@ -278,6 +315,8 @@ function SessionRow({
   onEarlier,
 }: {
   item: PlanItem
+  /** "About 45 min", once the baseline's problems are here. */
+  estimate: string | null
   icon: string
   logged: boolean
   busy: boolean
@@ -286,9 +325,12 @@ function SessionRow({
   onEarlier: () => void
 }) {
   const problems = Array.isArray(item.details.problems) ? item.details.problems.length : 0
-  const what = [pagesLabel(item.details), problems > 0 ? `${String(problems)} problems` : null]
-    .filter(Boolean)
-    .join(' · ')
+  // Each part stays whole when the line wraps ("About 45 min" never splits).
+  const what = [
+    pagesLabel(item.details),
+    problems > 0 ? `${String(problems)} problems` : null,
+    estimate,
+  ].filter((part): part is string => Boolean(part))
   const name = `${formatDay(item.date, 'long')}, ${sessionLabel(item.details) ?? item.title}`
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 sm:px-6">
@@ -304,7 +346,16 @@ function SessionRow({
           ) : null}
         </span>
         <span className="text-foreground">{sessionLabel(item.details) ?? item.title}</span>
-        <span className="text-small text-muted-foreground tabular-nums">{what || item.title}</span>
+        <span className="text-small text-muted-foreground tabular-nums">
+          {what.length > 0
+            ? what.map((part, i) => (
+                <span key={part} className="whitespace-nowrap">
+                  {i > 0 ? ' · ' : ''}
+                  {part}
+                </span>
+              ))
+            : item.title}
+        </span>
       </span>
       <span className="flex items-center gap-1">
         <Button variant="ghost" size="sm" onClick={onEdit} aria-label={`Edit ${name}`}>
@@ -374,6 +425,10 @@ function SessionForm({
     : []
   // Problems follow the pages; a session without pages (a mixed check) keeps its own.
   const problems = readingOnly ? [] : hasPages ? problemsFor(index, from, to) : existing
+  const minutes =
+    index.size === 0
+      ? null
+      : sessionMinutes(index, hasPages ? { page_start: from, page_end: to } : { problems })
 
   const baseline = template?.items.find((t) => t.details.session === d.session)
   const shift = template ? daysBetween(template.first_date, assignment.start_date) : 0
@@ -499,6 +554,16 @@ function SessionForm({
           ? 'No problem checkboxes for this session.'
           : `${String(problems.length)} problem checkbox${problems.length === 1 ? '' : 'es'}: ${problems.join(', ')}`}
       </p>
+      {minutes !== null ? (
+        <p className="text-small text-muted-foreground">
+          {minutesLabel(minutes)} of work
+          {minutes > 60
+            ? ': more than an hour, before any retries.'
+            : minutes < 30
+              ? ': under half an hour.'
+              : '.'}
+        </p>
+      ) : null}
       {problem ? (
         <p role="alert" className="text-small text-destructive">
           {problem}
@@ -531,6 +596,56 @@ function SessionForm({
           </Button>
         ) : null}
       </div>
+    </form>
+  )
+}
+
+/**
+ * A day off (a conflict, a sick day): that day's session and every later one move to the
+ * next plan day, keeping the rest day free. Only the admin sees this; the student's
+ * Today and My week simply show the new dates.
+ */
+function DayOff({
+  today,
+  busy,
+  onDayOff,
+}: {
+  today: string
+  busy: boolean
+  onDayOff: (date: string) => void
+}) {
+  const id = useId()
+  const [date, setDate] = useState(today)
+  return (
+    <form
+      aria-label="Day off"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-card px-5 py-4 sm:px-6"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (date) onDayOff(date)
+      }}
+    >
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Day off" id={id}>
+          <Input
+            id={id}
+            type="date"
+            value={date}
+            onChange={(e) => {
+              setDate(e.target.value)
+            }}
+            className="w-44"
+          />
+        </Field>
+        <Button type="submit" variant="outline" disabled={busy || !date}>
+          <ArrowDown aria-hidden />
+          Move the work back a day
+        </Button>
+      </div>
+      <p className="text-small text-muted-foreground">
+        That day’s session and every one after it move to the next plan day. The rest day stays
+        free.
+      </p>
     </form>
   )
 }
