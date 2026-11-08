@@ -1,3 +1,5 @@
+import { readFile, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { ACCOUNTS, PASSWORD, signIn } from './accounts'
 import { clearEntries, entriesOn, todayNY } from './data'
@@ -87,5 +89,41 @@ test.describe('the installed app', () => {
     await expect
       .poll(async () => (await entriesOn(client, 'violin', todayNY())).map((e) => e.data))
       .toEqual([{ practiced: true, focus: 'bow speed, offline' }])
+  })
+
+  test('offers a new version once it is downloaded, and switches to it', async ({ page }) => {
+    await signIn(page, ACCOUNTS.student.email, PASSWORD)
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+    await page.waitForFunction('navigator.serviceWorker.ready.then(() => true)')
+    await page.reload()
+    await page.waitForFunction('navigator.serviceWorker.controller !== null')
+    const notice = page
+      .getByRole('status')
+      .filter({ hasText: 'A new version of the app is ready.' })
+    await expect(notice).toHaveCount(0)
+
+    // A deploy: the server's service worker changes while the app is open.
+    const sw = resolve(import.meta.dirname, '..', 'dist', 'sw.js')
+    const deployed = await readFile(sw, 'utf8')
+    try {
+      await writeFile(sw, `${deployed}\n// the next version\n`)
+      // Coming back to the app is one of the moments it looks for a new version.
+      await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+      await expect(notice).toBeVisible({ timeout: 20_000 })
+
+      const reloaded = page.waitForEvent('load')
+      await notice.getByRole('button', { name: 'Update' }).click()
+      await reloaded
+      await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+      await expect(notice).toHaveCount(0)
+      // The new version is the one running: nothing is left waiting.
+      expect(
+        await page.evaluate(
+          'navigator.serviceWorker.getRegistration().then((r) => r !== undefined && r.waiting === null)',
+        ),
+      ).toBe(true)
+    } finally {
+      await writeFile(sw, deployed)
+    }
   })
 })

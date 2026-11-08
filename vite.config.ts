@@ -52,10 +52,12 @@ export default defineConfig({
     themeColor(),
     // Installable, and the app shell (code, styles, fonts, icons) works offline. Data
     // never goes through the service worker: the query cache and the outbox own it.
-    // A new version waits until the app is next opened; it never reloads a page mid-log.
+    // A new version waits until the person reloads into it (the Shell offers that once it
+    // is downloaded); it never reloads a page mid-log.
     VitePWA({
       registerType: 'prompt',
-      injectRegister: 'script-defer',
+      // Registered by AppUpdateProvider, which also offers each new version.
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: APP_NAME,

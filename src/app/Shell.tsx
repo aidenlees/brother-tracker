@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { SyncStatus } from '@/components/SyncStatus'
 import { Button } from '@/components/ui/button'
+import { useAppUpdate } from '@/lib/app-update'
 import type { SignedInProfile } from '@/lib/auth-context'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import { cn } from '@/lib/utils'
@@ -76,6 +77,7 @@ export function Shell({
         </div>
       </header>
       <main id="main" className="mx-auto max-w-2xl px-6 pt-10 pb-16">
+        <NewVersion />
         <Suspense
           fallback={
             <p role="status" className="text-muted-foreground">
@@ -86,6 +88,23 @@ export function Shell({
           <Outlet />
         </Suspense>
       </main>
+    </div>
+  )
+}
+
+/** Once a new version of the app is downloaded: one line, and the reload into it. */
+function NewVersion() {
+  const update = useAppUpdate()
+  if (!update.ready) return null
+  return (
+    <div
+      role="status"
+      className="mb-8 flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
+    >
+      <p className="text-small text-foreground">A new version of the app is ready.</p>
+      <Button size="sm" onClick={update.apply}>
+        Update
+      </Button>
     </div>
   )
 }
