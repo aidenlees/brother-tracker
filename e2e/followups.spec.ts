@@ -5,7 +5,7 @@ import { signedInClient } from './supabase'
 
 /**
  * Retries (followups), against the fixtures: the student has "p. 30 #2" due today;
- * student2 is on review session 21 with one retry overdue and one not due yet.
+ * student2 is on mixed-check session 13 with one retry overdue and one not due yet.
  */
 const card = (page: Page, name: string) => page.getByRole('region', { name, exact: true })
 
@@ -60,8 +60,8 @@ test.describe('@followups retries', () => {
       await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
       await page.keyboard.press('y')
       await page.keyboard.press('Enter')
-      await toggle('p. 31 #4')
-      await toggle('p. 32 #5')
+      await toggle('p. 32 #6')
+      await toggle('p. 33 #7')
       await page.keyboard.press('Enter')
       await page.keyboard.type('30')
       await page.keyboard.press('Enter')
@@ -70,23 +70,23 @@ test.describe('@followups retries', () => {
       // The outbox sends the entry first, then its retries.
       const due = addDays(todayNY(), 2)
       await expect.poll(retries).toEqual([
-        { label: 'p. 31 #4', due_date: due, status: 'open' },
-        { label: 'p. 32 #5', due_date: due, status: 'open' },
+        { label: 'p. 32 #6', due_date: due, status: 'open' },
+        { label: 'p. 33 #7', due_date: due, status: 'open' },
       ])
       // Not due yet, so not on Today's list.
-      await expect(page.getByText('p. 31 #4')).toHaveCount(0)
+      await expect(page.getByText('p. 32 #6')).toHaveCount(0)
 
-      // Edit: p. 32 #5 turned out fine after all.
+      // Edit: p. 33 #7 turned out fine after all.
       await card(page, 'Singapore Math').getByRole('link', { name: 'Edit' }).click()
       await page.getByRole('button', { name: 'Next' }).click()
-      await expect(page.getByRole('checkbox', { name: 'p. 32 #5' })).toBeChecked()
-      await toggle('p. 32 #5')
+      await expect(page.getByRole('checkbox', { name: 'p. 33 #7' })).toBeChecked()
+      await toggle('p. 33 #7')
       await page.getByRole('button', { name: 'Next' }).click()
       await page.getByRole('button', { name: 'Save' }).click()
       await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
       await expect.poll(retries).toEqual([
-        { label: 'p. 31 #4', due_date: due, status: 'open' },
-        { label: 'p. 32 #5', due_date: due, status: 'dropped' },
+        { label: 'p. 32 #6', due_date: due, status: 'open' },
+        { label: 'p. 33 #7', due_date: due, status: 'dropped' },
       ])
     })
   })

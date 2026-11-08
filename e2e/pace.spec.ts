@@ -86,7 +86,7 @@ test.describe('@pace logging at a student’s speed', () => {
     await next('Which problems did you struggle with?')
     lap('completed: yes')
 
-    // Four problems on pp. 31–32; two were hard. Tab along the boxes, Space to check.
+    // Eight problems on pp. 32–35; two were hard. Tab along the boxes, Space to check.
     await read()
     for (const keys of [
       ['Tab', 'Space'],
@@ -96,7 +96,7 @@ test.describe('@pace logging at a student’s speed', () => {
       for (const key of keys) await page.keyboard.press(key)
     }
     await next('Minutes')
-    lap('struggled (2 of 4 checked)')
+    lap('struggled (2 of 8 checked)')
 
     await read()
     const steps = Number(/of (\d+)/.exec(await page.getByText(/^\d+ of \d+$/).innerText())?.[1])
