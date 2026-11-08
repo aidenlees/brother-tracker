@@ -43,13 +43,16 @@ export function PlanCard({
     today,
   )
   const ahead = itemsAhead(items, today).filter((item) => entryFor(item) !== undefined)
+  // An early log is dated today, and entries start on the plan's first day (the
+  // database's rule), so before then there's no early log to offer.
+  const started = today >= assignment.start_date
   const upNext = (label: string) =>
     next ? (
       <UpNext
         label={label}
         item={next}
         href={sessionPath(assignment.id, next.id)}
-        logHref={logPath(assignment.id, { planItemId: next.id })}
+        logHref={started ? logPath(assignment.id, { planItemId: next.id }) : null}
         inProgress={drafts.some((d) => d.planItemId === next.id)}
       />
     ) : null
@@ -126,7 +129,7 @@ function Ahead({ items, assignmentId }: { items: PlanItem[]; assignmentId: strin
 
 /**
  * "Next: Monday, November 9 · Pages 14–19", opening that session's pages, and logging it
- * early for a student who has done it already.
+ * early for a student who has done it already (once the plan has started).
  */
 function UpNext({
   label,
@@ -138,7 +141,7 @@ function UpNext({
   label: string
   item: PlanItem
   href: string
-  logHref: string
+  logHref: string | null
   inProgress: boolean
 }) {
   return (
@@ -147,9 +150,11 @@ function UpNext({
         <span className="font-medium text-foreground">{label}:</span> {formatDay(item.date, 'long')}{' '}
         · <span className="tabular-nums">{workLabel(item)}</span>
       </Link>
-      <Button asChild variant="link" size="sm" className="h-auto px-0">
-        <Link to={logHref}>{inProgress ? 'Resume logging it' : 'Done it early? Log it'}</Link>
-      </Button>
+      {logHref ? (
+        <Button asChild variant="link" size="sm" className="h-auto px-0">
+          <Link to={logHref}>{inProgress ? 'Resume logging it' : 'Done it early? Log it'}</Link>
+        </Button>
+      ) : null}
     </div>
   )
 }

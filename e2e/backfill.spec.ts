@@ -63,7 +63,7 @@ test.describe('@backfill late logs and locked entries', () => {
 
     const answers: Record<string, string> = { Minutes: '25' }
     for (;;) {
-      const label = (await step(page).innerText()).replace(/\s*optional$/, '')
+      const label = await step(page).innerText()
       const answer = answers[label]
       if (answer) await page.keyboard.type(answer)
       const button = page.getByRole('button', { name: /^(Next|Save)$/ })

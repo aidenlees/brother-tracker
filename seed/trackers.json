@@ -29,7 +29,7 @@
           "type": "plan_checklist",
           "label": "Which problems did you struggle with?",
           "required": false,
-          "help": "Check the ones you couldn't do on your own. Each comes back as a retry in 2 days.",
+          "help": "Check the ones you couldn't do on your own.",
           "optionsFrom": "plan.problems"
         },
         { "key": "minutes", "type": "duration", "label": "Minutes", "required": true }
