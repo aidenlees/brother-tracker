@@ -221,7 +221,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 - `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind`, `reading_only` and `problems`, plus `pdf_offset` on items that have pages.
 - `problems`: one label per problem or lettered part on the session's pages, named by the page it's printed on (`p. 31 #4`, `p. 15 #2(e)`); mixed checks list the problems they name.
 - Pages are printed pages. Today states them plainly ("Pages 32–35") with the day's pages as a row of small images; a session's page shows them as a grid that opens each full size; the log page shows only the topic.
-- A session can be logged early, from Today's "Next" line or its page: the entry is dated the day it was done, so its retries are due two days after the work.
+- A session can be logged early, from Today's "Next" line or its page: the entry is dated the day it was done, so its retries are due two days after the work. Not before the plan's first day: entries are dated from the assignment's start to today (security rule 3), so the app doesn't offer it then.
 
 **Fields** (three steps)
 - `completed`: "Did you complete the problems on the pages?" (yes/no; on a day the admin marks reading only, `read`, "Did you finish the reading?")

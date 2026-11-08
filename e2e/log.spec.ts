@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import { ACCOUNTS, authFile } from './accounts'
 import { addDays, assignmentId, clearEntries, entriesOn, planItemId, todayNY } from './data'
-import { signedInClient } from './supabase'
+import { localSql, signedInClient } from './supabase'
 
 /**
  * The math log flow, against the fixtures: session 5 (pp. 32–35: problems 5–12) is today,
@@ -136,6 +136,30 @@ test.describe('@log the math log flow', () => {
         return data
       })
       .toEqual([{ label: 'p. 36 #1(a)', due_date: addDays(todayNY(), 2) }])
+  })
+
+  test('before the plan starts, a session can’t be logged early (entries start on day one)', async ({
+    page,
+  }) => {
+    const client = await signedInClient(ACCOUNTS.student.email)
+    const math = await assignmentId(client, 'singapore-math')
+    const tomorrow = await planItemId(client, 'singapore-math', 6)
+    const { data } = await client.from('assignments').select('start_date').eq('id', math).single()
+    const start = (data as { start_date: string }).start_date
+    localSql(
+      `update public.assignments set start_date = '${addDays(todayNY(), 1)}' where id = '${math}'`,
+    )
+    try {
+      await page.goto(`session/${math}/${tomorrow}`)
+      await expect(
+        page.getByText(/Sessions can be logged from .*, when the plan starts\.$/),
+      ).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Log it early' })).toHaveCount(0)
+      await page.goto(`log/${math}/${tomorrow}`)
+      await expect(page.getByText(/^You can log days from /)).toBeVisible()
+    } finally {
+      localSql(`update public.assignments set start_date = '${start}' where id = '${math}'`)
+    }
   })
 
   test('closing mid-way keeps the answers; Today offers to resume', async ({ page }) => {

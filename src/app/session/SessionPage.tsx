@@ -58,6 +58,8 @@ export function SessionPage() {
     ? item.details.problems.filter((p): p is string => typeof p === 'string')
     : []
   const future = item.date > today
+  // Entries start on the plan's first day, so an early log waits until then.
+  const started = today >= assignment.start_date
 
   return (
     <div style={{ '--tracker': `var(--tracker-${tracker.color})` } as CSSProperties}>
@@ -88,6 +90,11 @@ export function SessionPage() {
               </Button>
             ) : null}
           </div>
+        ) : future && !started ? (
+          <p className="text-muted-foreground">
+            Planned for {formatDay(item.date, 'long')}. Sessions can be logged from{' '}
+            {formatDay(assignment.start_date, 'long')}, when the plan starts.
+          </p>
         ) : future ? (
           <div className="flex flex-col items-start gap-3">
             <p className="text-muted-foreground">
