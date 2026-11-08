@@ -61,6 +61,7 @@ pnpm gen:icons           # app icons in public/ from public/favicon.svg (commit 
 pnpm test                # Vitest
 pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sessions.json -> plan_templates (idempotent, no people); --remote for the cloud project
 pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' assignments, entries and retries around today, and placeholder book pages if none; after db reset + seed
+pnpm plan:math           # rebuild seed/math_sessions.json: every page in order, 6 days a week, ~45 min a day (scripts/plan-math-build.ts; tests check it isn't stale)
 pnpm book:pages          # render the plan's printed pages from the book PDF in seed/ (gitignored) and upload them to the private book-pages bucket; --remote for the cloud (needs Python 3 + pypdfium2 + Pillow)
 pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview); screenshots land in test-results/screens/
 pnpm e2e --grep @pace    # the student-speed timing test: math log under 2 min, violin check-in about 10 s (also runs in pnpm e2e)
@@ -88,8 +89,8 @@ supabase/
   seed.sql        LOCAL ONLY: fake users (student@example.test, admin@…, viewer@…, student2@…)
 seed/
   trackers.json        launch tracker definitions
-  math_sessions.json   80-session math plan (plan template source), with each session's problem numbers (read once from the book, which stays out of the repo)
-scripts/               seed, book-pages, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
+  math_sessions.json   the math plan (plan template source, built by `pnpm plan:math`), with each session's problem numbers (read once from the book, which stays out of the repo)
+scripts/               seed, plan-math, book-pages, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
 e2e/                   Playwright specs; supabase.ts talks to the local stack only
 .github/workflows/     ci.yml, deploy.yml, backup.yml
 ```
@@ -213,13 +214,17 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 ### `singapore-math` (cadence: plan)
 
 **Plan**
-- Template from `seed/math_sessions.json`: 80 sessions, Sun/Tue/Thu/Sat, first date 2026-11-01. Three Thursdays are already moved to Wednesday.
+- Template from `seed/math_sessions.json`, built by `pnpm plan:math`: 54 sessions, Sunday to Friday (Saturday is the rest day), first date 2026-11-08, through 2027-01-08.
+  - Every printed page from 5 to 309 once, in order. A day never crosses a chapter or splits a problem, and a chapter's worked examples go with its first problems, so **every day has problems**.
+  - Each day is 30–60 minutes of estimated work, aiming at 45, so retries fit within an hour (`src/trackers/estimate.ts`: a worked-example page 4 min, a lettered part 1.5 + 1 for its question, a problem alone on its page 9, one sharing a page 5).
+  - Mixed checks after chapters 5, 10 and 16: about 45 minutes of earlier problems to redo, named one by one.
 - `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind`, `reading_only` and `problems`, plus `pdf_offset` on items that have pages.
-- `problems`: one label per problem or lettered part on the session's practice pages, named by the page it's printed on (`p. 31 #4`, `p. 15 #2(e)`); mixed checks list the problems they name; reviews and reading days have none.
-- Pages are printed pages. Today states them plainly ("Pages 31–32") with images of the pages; a session's page shows each one large; the log page shows only the topic.
+- `problems`: one label per problem or lettered part on the session's pages, named by the page it's printed on (`p. 31 #4`, `p. 15 #2(e)`); mixed checks list the problems they name.
+- Pages are printed pages. Today states them plainly ("Pages 32–35") with the day's pages as a row of small images; a session's page shows them as a grid that opens each full size; the log page shows only the topic.
+- A session can be logged early, from Today's "Next" line or its page: the entry is dated the day it was done, so its retries are due two days after the work.
 
 **Fields** (three steps)
-- `completed`: "Did you complete the problems on the pages?" (yes/no; on reading days `read`, "Did you finish the reading?")
+- `completed`: "Did you complete the problems on the pages?" (yes/no; on a day the admin marks reading only, `read`, "Did you finish the reading?")
 - `struggled`: "Which problems did you struggle with?", a `plan_checklist` of the session's `problems` (none checked is an answer)
 - `minutes`
 
@@ -246,14 +251,14 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 | Screen | Who | Notes |
 |---|---|---|
-| Today | student | One card per active assignment, top to bottom: today's pages (or the inline check-in; after saving, one line for what's next), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
+| Today | student | One card per active assignment, top to bottom: today's pages as a row of small images (or the inline check-in; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
 | Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. |
 | My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic and each check-in, with where it stands. Never a grade; no pacing flags. |
-| Session | student | One planned session: topic, date, problems, the book's pages large, and Log ("Planned for …" ahead of its day). |
+| Session | student | One planned session: topic, date, problems, the book's pages as a grid (tap one for a full-size viewer with previous/next), and Log ("Log it early" ahead of its day). |
 | Overview | admin, viewer | Person picker (viewer: linked students only); per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
 | Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
 | Retry queue | admin | Open followups, overdue first |
-| Plan editor | admin | Every session by week: edit date, topic and pages (the problem checkboxes follow), move a session and every later one a plan day later (a catch-up day) or earlier, keeping the weekly rhythm, or reset it to the seed baseline |
+| Plan editor | admin | Every session by week, each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
 | People | admin | Add or disable accounts (via `admin-users`), set roles, link viewers to students, assign trackers with a start date |
 | Export | admin | CSV / .xlsx per tracker and person; math uses the original sheet's columns |
@@ -310,7 +315,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.
