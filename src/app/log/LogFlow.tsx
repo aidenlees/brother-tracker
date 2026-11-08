@@ -297,14 +297,6 @@ export function LogFlow({
         <div className="flex flex-col gap-1.5">
           <h2 id={labelId} className="font-heading text-display text-foreground">
             {field.label}
-            {!field.required ? (
-              <>
-                {/* Only the space before it: wrapped onto its own line, it starts flush. */}{' '}
-                <span className="inline-block font-sans text-small font-normal text-muted-foreground">
-                  optional
-                </span>
-              </>
-            ) : null}
           </h2>
           {help ? (
             <p id={helpId} className="text-muted-foreground">
