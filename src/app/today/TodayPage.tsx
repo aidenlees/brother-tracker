@@ -27,8 +27,9 @@ export function TodayPage() {
   const today = useToday()
   const data = useStudentData()
   const drafts = useDrafts(useOutbox().userId)
-  /** Set by the log flow after a save, so that entry's check mark eases in. */
-  const savedId = (useLocation().state as { saved?: string } | null)?.saved
+  /** Set by the log flow: after a save, so that entry's check mark eases in; after a clear. */
+  const state = useLocation().state as { saved?: string; cleared?: boolean } | null
+  const savedId = state?.saved
 
   return (
     <Page title="Today" lead={formatDay(today, 'long')}>
@@ -42,6 +43,11 @@ export function TodayPage() {
         <EmptyNote>Your trackers will show up here once your admin assigns them.</EmptyNote>
       ) : (
         <div className="flex flex-col gap-4">
+          {state?.cleared ? (
+            <p role="status" className="text-small text-muted-foreground">
+              Log cleared.
+            </p>
+          ) : null}
           {data.assignments.map((assignment) => (
             <AssignmentCard
               key={assignment.id}
@@ -89,7 +95,6 @@ function AssignmentCard({
       {cadence === 'plan' ? (
         <PlanCard
           assignment={assignment}
-          slug={tracker.slug}
           items={items}
           entries={entries}
           drafts={drafts}

@@ -93,6 +93,26 @@ test.describe('@violin the inline check-in', () => {
       .toEqual([{ practiced: true, focus: 'long bows' }])
   })
 
+  test('a check-in made by mistake can be cleared, and made again', async ({ page }) => {
+    await page.goto('today')
+    const violin = card(page, 'Violin')
+    await violin.getByText('No', { exact: true }).click()
+    await expect(violin.getByText('· Synced')).toBeVisible()
+    const client = await signedInClient(ACCOUNTS.student.email)
+    await expect.poll(async () => (await entriesOn(client, 'violin', todayNY())).length).toBe(1)
+
+    await violin.getByRole('button', { name: 'Clear this check-in' }).click()
+    await expect(
+      violin.getByRole('group', {
+        name: 'Clear this check-in? It’s removed for good. You can check in again.',
+      }),
+    ).toBeVisible()
+    await violin.getByRole('button', { name: 'Clear it' }).click()
+    await expect(violin.getByText('Yes', { exact: true })).toBeVisible()
+    await expect(violin.getByText('No', { exact: true })).toBeVisible()
+    await expect.poll(async () => entriesOn(client, 'violin', todayNY())).toEqual([])
+  })
+
   test('Yes without a focus says what’s missing', async ({ page }) => {
     await page.goto('today')
     const violin = card(page, 'Violin')

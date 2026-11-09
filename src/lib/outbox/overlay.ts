@@ -62,6 +62,11 @@ export function overlayEntries(
     } else if (op.kind === 'entry.update') {
       const existing = byId.get(op.id)
       if (existing) byId.set(op.id, { ...existing, ...op.patch, ...state(item) })
+    } else if (op.kind === 'entry.delete') {
+      // Cleared: gone at once. A clear the server refused leaves it shown, with why.
+      const existing = byId.get(op.id)
+      if (!item.parked) byId.delete(op.id)
+      else if (existing) byId.set(op.id, { ...existing, ...state(item) })
     }
   }
   return [...byId.values()]
@@ -72,6 +77,10 @@ export function overlayFollowups(
   outbox: readonly OutboxItem[],
 ): FollowupView[] {
   const byId = new Map<string, FollowupView>(server.map((f) => [f.id, { ...f, sync: 'synced' }]))
+  // A cleared log's retries go with it.
+  const cleared = new Set(
+    outbox.flatMap((item) => (item.op.kind === 'entry.delete' && !item.parked ? [item.op.id] : [])),
+  )
   for (const item of outbox) {
     const op = item.op
     if (op.kind === 'followup.create') {
@@ -83,7 +92,7 @@ export function overlayFollowups(
       if (existing) byId.set(op.id, { ...existing, ...op.patch, ...state(item) })
     }
   }
-  return [...byId.values()]
+  return [...byId.values()].filter((f) => !cleared.has(f.entry_id))
 }
 
 /** Entries can be changed for 7 days after they're logged (CLAUDE.md, security rule 3). */

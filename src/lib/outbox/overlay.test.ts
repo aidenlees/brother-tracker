@@ -52,6 +52,32 @@ describe('overlayEntries', () => {
   })
 })
 
+describe('a cleared log', () => {
+  const retry = {
+    id: 'f1',
+    entry_id: 'e1',
+    assignment_id: 'math',
+    label: 'p. 31 #4',
+    due_date: '2026-11-10',
+    status: 'open' as const,
+    created_at: server.created_at,
+  }
+
+  it('is gone at once, with its retries', () => {
+    const clear = queued({ kind: 'entry.delete', id: 'e1' })
+    expect(overlayEntries([server], [clear])).toEqual([])
+    expect(overlayFollowups([retry], [clear])).toEqual([])
+  })
+
+  it('stays, marked, when the server refused the clear', () => {
+    const clear = queued({ kind: 'entry.delete', id: 'e1' }, 'Locked')
+    expect(overlayEntries([server], [clear])).toEqual([
+      { ...server, sync: 'parked', reason: 'Locked' },
+    ])
+    expect(overlayFollowups([retry], [clear])).toHaveLength(1)
+  })
+})
+
 describe('overlayFollowups', () => {
   it('shows a status change at once', () => {
     const followup = {

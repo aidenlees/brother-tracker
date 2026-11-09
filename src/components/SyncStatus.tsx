@@ -8,6 +8,8 @@ function describeOp(item: OutboxItem): string {
     case 'entry.create':
     case 'entry.update':
       return 'An entry'
+    case 'entry.delete':
+      return 'Clearing a log'
     case 'followup.create':
     case 'followup.update':
       return 'A retry'

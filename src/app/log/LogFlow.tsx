@@ -9,6 +9,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { ClearLog } from '@/components/ClearLog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDay } from '@/lib/dates'
@@ -174,6 +175,17 @@ export function LogFlow({
     await saveRetries(entryId, result.data)
     await deleteDraft(draft.key)
     void navigate('/today', { state: { saved: existing?.id ?? draft.entryId } })
+  }
+
+  /** Clears the log being edited: gone from here and, once synced, from the server. */
+  async function clearLog() {
+    if (!existing) return
+    finished.current = true
+    await outbox.clear(
+      existing.id,
+      existingFollowups.map((f) => f.id),
+    )
+    void navigate('/today', { state: { cleared: true } })
   }
 
   function next() {
@@ -354,6 +366,8 @@ export function LogFlow({
           {field.type === 'long_text' ? ' · Shift+Enter for a new line' : null}
         </p>
       </nav>
+
+      {existing ? <ClearLog retries={existingFollowups.length} onClear={clearLog} /> : null}
     </div>
   )
 }

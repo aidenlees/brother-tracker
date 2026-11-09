@@ -32,6 +32,7 @@ export function LockedEntry({
         <Lock aria-hidden className="size-4" />
         Locked: entries can be changed for 7 days after they’re logged.
       </p>
+      <p className="text-muted-foreground">Logged by mistake? Ask your admin to clear it.</p>
       <dl className="flex max-w-xl flex-col gap-4">
         {fields.map((field) => (
           <div key={field.key} className="flex flex-col gap-1">

@@ -1,24 +1,23 @@
 import { ArrowRight, Check } from 'lucide-react'
 import { Link } from 'react-router'
-import { PageThumbnails } from '@/components/BookPages'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
 import type { Draft } from '@/lib/outbox/types'
 import type { Assignment } from '@/lib/student-data'
-import { bookPages, itemsOn, nextItem, workLabel, type PlanItem } from '@/trackers/plan'
+import { itemsOn, nextItem, workLabel, type PlanItem } from '@/trackers/plan'
 import { logPath, sessionPath } from '../log/paths'
 import { SavedNote } from './TrackerCard'
 
 /**
  * A plan-cadence tracker: what today's session asks for, stated plainly ("Pages 31–32"),
- * ready to log. Once it's saved, one line says what comes next, with a way to log it
+ * ready to log. The book's pages are on the session's own page ("See the pages"), so
+ * Today stays short. Once it's saved, one line says what comes next, with a way to log it
  * early; on a day without a session, or before the plan starts, that line is the card.
  * Sessions already logged ahead of their day are listed, and Next skips them.
  */
 export function PlanCard({
   assignment,
-  slug,
   items,
   entries,
   drafts,
@@ -26,8 +25,6 @@ export function PlanCard({
   today,
 }: {
   assignment: Assignment
-  /** The tracker's slug, which names its book's pages. */
-  slug: string
   items: PlanItem[]
   entries: EntryView[]
   /** Logs in progress on this device. */
@@ -70,7 +67,6 @@ export function PlanCard({
             fresh={savedId !== undefined && entryFor(item)?.id === savedId}
             href={logPath(assignment.id, { planItemId: item.id })}
             pagesHref={sessionPath(assignment.id, item.id)}
-            slug={slug}
           />
         ))}
         {allLogged ? (
@@ -166,7 +162,6 @@ function Session({
   fresh,
   href,
   pagesHref,
-  slug,
 }: {
   item: PlanItem
   entry?: EntryView
@@ -175,7 +170,6 @@ function Session({
   href: string
   /** The session's page, with its pages from the book. */
   pagesHref: string
-  slug: string
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -185,7 +179,6 @@ function Session({
       >
         {workLabel(item)}
       </Link>
-      <PageThumbnails slug={slug} pages={bookPages(item.details)} href={pagesHref} />
       {entry ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <SavedNote sync={entry.sync} reason={entry.reason} fresh={fresh} />
@@ -194,14 +187,22 @@ function Session({
               <Link to={href}>{inProgress ? 'Resume editing' : 'Edit'}</Link>
             </Button>
           ) : null}
+          <Button asChild variant="link" size="sm" className="h-auto px-0">
+            <Link to={pagesHref}>See the pages</Link>
+          </Button>
         </div>
       ) : (
-        <Button asChild size="lg" className="self-start">
-          <Link to={href}>
-            {inProgress ? 'Resume logging' : 'Log this session'}
-            <ArrowRight aria-hidden />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild size="lg">
+            <Link to={href}>
+              {inProgress ? 'Resume logging' : 'Log this session'}
+              <ArrowRight aria-hidden />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link to={pagesHref}>See the pages</Link>
+          </Button>
+        </div>
       )}
     </div>
   )

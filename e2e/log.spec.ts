@@ -87,6 +87,65 @@ test.describe('@log the math log flow', () => {
       ])
   })
 
+  test('a log made by mistake is cleared from Edit, with its retry', async ({ page }) => {
+    await open(page)
+    await page.keyboard.press('y')
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Space') // p. 32 #5
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('20')
+    await page.keyboard.press('Enter')
+    const math = page.getByRole('region', { name: 'Singapore Math' })
+    await expect(math.getByText('· Synced')).toBeVisible()
+    const client = await signedInClient(ACCOUNTS.student.email)
+    const [entry] = await entriesOn(client, 'singapore-math', todayNY())
+    await expect
+      .poll(async () => {
+        const { data } = await client
+          .from('followups')
+          .select('label')
+          .eq('entry_id', entry?.id ?? '')
+        return data
+      })
+      .toEqual([{ label: 'p. 32 #5' }])
+
+    await math.getByRole('link', { name: 'Edit' }).click()
+    // Today's cards have level-2 headings too: wait until the log flow has replaced them.
+    await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
+    await expect(step(page)).toContainText(COMPLETED)
+    await page.getByRole('button', { name: 'Clear this log' }).click()
+    const ask = page.getByRole('group', { name: /^Clear this log\?/ })
+    await expect(ask).toHaveAccessibleName(
+      'Clear this log? It’s removed for good, with its 1 retry.',
+    )
+    // Enter keeps it: the focus starts on "Keep it", and the flow doesn't move on.
+    await page.keyboard.press('Enter')
+    await expect(ask).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Clear this log' })).toBeFocused()
+    await expect(step(page)).toContainText(COMPLETED)
+
+    await page.getByRole('button', { name: 'Clear this log' }).click()
+    await page.getByRole('button', { name: 'Clear it' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Today' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Log cleared.' })).toBeVisible()
+    await expect(math.getByRole('link', { name: 'Log this session' })).toBeVisible()
+    await expect.poll(async () => entriesOn(client, 'singapore-math', todayNY())).toEqual([])
+    const { data: retries } = await client
+      .from('followups')
+      .select('id')
+      .eq('entry_id', entry?.id ?? '')
+    expect(retries).toEqual([])
+  })
+
+  test('a log past its 7 days says the admin can clear it', async ({ page }) => {
+    const client = await signedInClient(ACCOUNTS.student.email)
+    const violin = await assignmentId(client, 'violin')
+    await page.goto(`log/${violin}?date=${addDays(todayNY(), -8)}`)
+    await expect(page.getByText(/^Locked:/)).toBeVisible()
+    await expect(page.getByText('Logged by mistake? Ask your admin to clear it.')).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Clear this/ })).toHaveCount(0)
+  })
+
   test('tomorrow’s session, done early, is logged today and shown as done', async ({ page }) => {
     const client = await signedInClient(ACCOUNTS.student.email)
     const tomorrow = await planItemId(client, 'singapore-math', 6)
