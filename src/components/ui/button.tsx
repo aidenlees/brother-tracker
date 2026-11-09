@@ -13,6 +13,8 @@ const buttonVariants = cva(
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         outline: 'border border-input bg-card hover:bg-muted',
         ghost: 'hover:bg-muted',
+        /** For what can't be undone (clearing a log): outlined in the danger colour. */
+        danger: 'border border-destructive bg-card text-destructive hover:bg-muted',
         link: 'text-foreground underline underline-offset-4 hover:text-muted-foreground',
       },
       size: {

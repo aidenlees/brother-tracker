@@ -4,6 +4,7 @@
  * in this tab and others.
  */
 import { createStore, del, entries, get, set, type UseStore } from 'idb-keyval'
+import { deletePhoto } from './photos'
 import type { Draft, Op, OutboxItem } from './types'
 
 const OUTBOX_LOCK = 'practice-tracker-outbox'
@@ -178,6 +179,51 @@ export function discardItem(key: string): Promise<void> {
 }
 
 /**
+ * The student clears a log. Every op still waiting for it (the entry itself, its edits,
+ * its retries, its photos) is dropped, so none of it reaches the server, and one delete
+ * is queued in case the server has it already. Its draft goes too. `followupIds` are the
+ * log's retries the server already has, whose waiting changes are dropped as well.
+ */
+export function clearEntry(
+  userId: string,
+  entryId: string,
+  followupIds: readonly string[],
+): Promise<void> {
+  return withOutboxLock(async () => {
+    const queued = await listOutbox(userId)
+    const retries = new Set(followupIds)
+    for (const { op } of queued) {
+      if (op.kind === 'followup.create' && op.row.entry_id === entryId) retries.add(op.row.id)
+    }
+    for (const item of queued) {
+      const op = item.op
+      const forEntry =
+        (op.kind === 'entry.create' && op.row.id === entryId) ||
+        ((op.kind === 'entry.update' || op.kind === 'entry.delete') && op.id === entryId) ||
+        (op.kind === 'followup.create' && retries.has(op.row.id)) ||
+        (op.kind === 'followup.update' && retries.has(op.id)) ||
+        (op.kind === 'photo.upload' && op.entry_id === entryId)
+      if (!forEntry) continue
+      await del(item.key, outbox())
+      if (op.kind === 'photo.upload') await deletePhoto(op.id)
+    }
+    const key = nextKey(userId)
+    const item: OutboxItem = {
+      key,
+      userId,
+      op: { kind: 'entry.delete', id: entryId },
+      queuedAt: new Date().toISOString(),
+      parked: null,
+    }
+    await set(key, item, outbox())
+    for (const draft of await listDrafts(userId)) {
+      if (draft.entryId === entryId) await del(draft.key, drafts())
+    }
+    changed()
+  })
+}
+
+/**
  * The server already had this entry under another id (logged on another device), so
  * point every later op at the server's id.
  */
@@ -186,7 +232,9 @@ export function remapEntry(userId: string, from: string, to: string): Promise<vo
     for (const item of await listOutbox(userId)) {
       const op = item.op
       let next: Op | null = null
-      if (op.kind === 'entry.update' && op.id === from) next = { ...op, id: to }
+      if ((op.kind === 'entry.update' || op.kind === 'entry.delete') && op.id === from) {
+        next = { ...op, id: to }
+      }
       if (op.kind === 'followup.create' && op.row.entry_id === from) {
         next = { ...op, row: { ...op.row, entry_id: to } }
       }

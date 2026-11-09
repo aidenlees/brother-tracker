@@ -4,7 +4,7 @@ import { PhotoStoreContext } from '@/trackers/fields/photo-store'
 import { supabaseOutboxApi } from './api'
 import { OutboxContext, type Outbox } from './outbox-context'
 import { devicePhotoStore } from './device-photo-store'
-import { discardItem, enqueue as enqueueOp, listOutbox, subscribe } from './store'
+import { clearEntry, discardItem, enqueue as enqueueOp, listOutbox, subscribe } from './store'
 import { flushOutbox, type OutboxApi } from './sync'
 import type { Op, OutboxItem } from './types'
 
@@ -129,6 +129,11 @@ export function OutboxProvider({
     [userId],
   )
 
+  const clear = useCallback(
+    (entryId: string, followupIds: readonly string[]) => clearEntry(userId, entryId, followupIds),
+    [userId],
+  )
+
   const value = useMemo<Outbox>(
     () => ({
       userId,
@@ -139,10 +144,11 @@ export function OutboxProvider({
       offline,
       syncedAt,
       enqueue,
+      clear,
       flush,
       discard: discardItem,
     }),
-    [userId, items, pending, syncing, offline, syncedAt, enqueue, flush],
+    [userId, items, pending, syncing, offline, syncedAt, enqueue, clear, flush],
   )
   const photos = useMemo(() => devicePhotoStore(userId), [userId])
   return (

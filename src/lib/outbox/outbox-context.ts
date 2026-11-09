@@ -15,6 +15,8 @@ export type Outbox = {
   /** When a pass last finished with the server reachable. */
   syncedAt: number | null
   enqueue: (op: Op) => Promise<void>
+  /** Clears a log: drops what's waiting for it and deletes it (with its retries). */
+  clear: (entryId: string, followupIds: readonly string[]) => Promise<void>
   flush: () => void
   discard: (key: string) => Promise<void>
 }

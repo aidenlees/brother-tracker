@@ -1,8 +1,9 @@
 import { useId, useState } from 'react'
+import { ClearLog } from '@/components/ClearLog'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
-import type { EntryView } from '@/lib/outbox/overlay'
+import { isEditable, type EntryView } from '@/lib/outbox/overlay'
 import { queuePhotos } from '@/lib/outbox/queue-photos'
 import type { Assignment, Tracker } from '@/lib/student-data'
 import type { FieldDefinition, FieldTypeName } from '@/trackers/definition'
@@ -133,6 +134,17 @@ export function InlineCheckIn({
             Change
           </Button>
         </div>
+        {todays && isEditable(todays) ? (
+          <ClearLog
+            noun="check-in"
+            note="You can check in again."
+            onClear={async () => {
+              await outbox.clear(todays.id, [])
+              setJustSaved(null)
+              setData(initialData(tracker.fields, null))
+            }}
+          />
+        ) : null}
       </div>
     )
   }

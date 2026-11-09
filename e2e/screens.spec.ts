@@ -84,6 +84,16 @@ for (const viewport of VIEWPORTS) {
           await expect(page.getByRole('form', { name: /^Edit / })).toBeVisible()
           await shot(page, 'plan-edit')
         })
+
+        test('a log in Overview, about to be cleared', async ({ page }) => {
+          await page.goto('overview')
+          await page.getByLabel('Student').selectOption({ label: 'Sam' })
+          const log = page.getByRole('article', { name: 'Singapore Math' }).first()
+          await log.getByRole('button', { name: 'Clear this log' }).click()
+          await expect(log.getByRole('button', { name: 'Keep it' })).toBeFocused()
+          await settled(page)
+          await shot(page, 'overview-clear')
+        })
       })
 
       test.describe('student', () => {
@@ -118,6 +128,12 @@ for (const viewport of VIEWPORTS) {
           await expect(card.getByText(/^Next: /)).toBeVisible()
           await settled(page)
           await shot(page, 'today-math-saved')
+
+          // Editing it offers to clear it.
+          await card.getByRole('link', { name: 'Edit' }).click()
+          await page.getByRole('button', { name: 'Clear this log' }).click()
+          await expect(page.getByRole('button', { name: 'Keep it' })).toBeFocused()
+          await shot(page, 'log-clear')
           await clearEntries(client, 'singapore-math', todayNY())
         })
 

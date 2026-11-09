@@ -12,6 +12,8 @@
  *     rest wait, in order, for the next one.
  *   - A refusal (RLS, validation, the 7-day lock) parks the op with the reason. It stays
  *     on the device, and ops that need its entry wait behind it.
+ *   - Clearing a log deletes it. A delete RLS refuses also changes nothing, so when none
+ *     is deleted, a look tells "never got here, or already gone" (done) from "locked".
  */
 import { isUnreachable } from '../identity'
 import { deletePhoto, getPhoto } from './photos'
@@ -25,6 +27,10 @@ export type ApiResult = { error: ApiError | null; status: number; rows?: number 
 export type OutboxApi = {
   insertEntry: (row: EntryRow) => Promise<ApiResult>
   updateEntry: (id: string, patch: EntryPatch) => Promise<ApiResult>
+  /** rows: how many entries were deleted (0 when RLS refused, or there was none). */
+  deleteEntry: (id: string) => Promise<ApiResult>
+  /** Whether the entry is on the server (rows: 1 or 0). */
+  findEntry: (id: string) => Promise<ApiResult>
   findEntryId: (
     slot: Pick<EntryRow, 'assignment_id' | 'date' | 'plan_item_id'>,
   ) => Promise<ApiResult & { id: string | null }>
@@ -56,6 +62,9 @@ export type FlushResult = {
 
 export const REASONS = {
   locked: 'Locked: an entry can only be changed for 7 days after it’s logged.',
+  clearLocked:
+    'Locked: a log can only be cleared for 7 days after it’s logged. Ask your admin to clear it.',
+  cleared: 'This log was cleared, so the change can’t be saved. Discard it, then log it again.',
   followupLocked: 'This retry can’t be changed any more.',
   otherDevice:
     'This session was also logged on another device, and that entry can’t be changed now.',
@@ -128,8 +137,25 @@ async function run(op: Op, api: OutboxApi): Promise<Outcome> {
       }
       return classify(inserted)
     }
-    case 'entry.update':
-      return expectOne(await api.updateEntry(op.id, op.patch), REASONS.locked)
+    case 'entry.update': {
+      // Nothing changed: the lock said no, or the log is gone (cleared by the admin).
+      const updated = await api.updateEntry(op.id, op.patch)
+      if (updated.error || (updated.rows ?? 0) > 0) return classify(updated)
+      const found = await api.findEntry(op.id)
+      if (found.error) return classify(found)
+      return {
+        kind: 'refused',
+        reason: (found.rows ?? 0) > 0 ? REASONS.locked : REASONS.cleared,
+      }
+    }
+    case 'entry.delete': {
+      const deleted = await api.deleteEntry(op.id)
+      if (deleted.error) return classify(deleted)
+      if ((deleted.rows ?? 0) > 0) return done
+      const found = await api.findEntry(op.id)
+      if (found.error) return classify(found)
+      return (found.rows ?? 0) > 0 ? { kind: 'refused', reason: REASONS.clearLocked } : done
+    }
     case 'followup.create': {
       const inserted = await api.insertFollowup(op.row)
       if (inserted.error?.code !== '23505') return classify(inserted)

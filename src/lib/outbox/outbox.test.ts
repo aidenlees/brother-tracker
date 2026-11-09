@@ -2,7 +2,15 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { getPhoto, putPhoto } from './photos'
-import { draftKey, enqueue, getDraft, listOutbox, saveDraft, deleteDraft } from './store'
+import {
+  clearEntry,
+  draftKey,
+  enqueue,
+  getDraft,
+  listOutbox,
+  saveDraft,
+  deleteDraft,
+} from './store'
 import { flushOutbox, REASONS, type ApiResult, type AttachmentRow, type OutboxApi } from './sync'
 import type { EntryRow, FollowupRow } from './types'
 
@@ -70,6 +78,22 @@ function fakeServer() {
       if (!current || state.locked.has(id)) return ok(0)
       entries.set(id, { ...current, ...patch })
       return ok(1)
+    },
+    async deleteEntry(id) {
+      calls.push(`deleteEntry ${id}`)
+      await wire()
+      if (state.offline) return down
+      if (!entries.has(id) || state.locked.has(id)) return ok(0)
+      entries.delete(id)
+      // on delete cascade
+      for (const [key, f] of followups) if (f.entry_id === id) followups.delete(key)
+      return ok(1)
+    },
+    async findEntry(id) {
+      calls.push(`findEntry ${id}`)
+      await wire()
+      if (state.offline) return down
+      return ok(entries.has(id) ? 1 : 0)
     },
     async findEntryId(slot) {
       calls.push('findEntryId')
@@ -302,6 +326,14 @@ describe('the outbox', () => {
     expect((await listOutbox(user))[0]?.parked?.reason).toBe(REASONS.locked)
   })
 
+  it('says so when an edit is for a log that was cleared', async () => {
+    const server = fakeServer()
+    await enqueue(user, { kind: 'entry.update', id: id(), patch: { data: { minutes: 10 } } })
+
+    expect((await flushOutbox(user, server.api)).parked).toBe(1)
+    expect((await listOutbox(user))[0]?.parked?.reason).toBe(REASONS.cleared)
+  })
+
   it('treats a request without a session as "try later", not a refusal', async () => {
     const server = fakeServer()
     server.state.refuse = { code: '42501', message: 'permission denied for table entries' }
@@ -319,6 +351,99 @@ describe('the outbox', () => {
     expect((await flushOutbox(user, server.api)).synced).toBe(1)
     expect(await listOutbox(other)).toHaveLength(1)
     expect([...server.entries.values()].map((e) => e.owner_id)).toEqual([user])
+  })
+})
+
+describe('clearing a log', () => {
+  it('deletes a synced log, retries and all, and drops its waiting changes', async () => {
+    const server = fakeServer()
+    const e = entry()
+    const f = followup(e.id)
+    await enqueue(user, { kind: 'entry.create', row: e })
+    await enqueue(user, { kind: 'followup.create', row: f })
+    await flushOutbox(user, server.api)
+    await enqueue(user, { kind: 'entry.update', id: e.id, patch: { data: { minutes: 50 } } })
+    await enqueue(user, { kind: 'followup.update', id: f.id, patch: { status: 'done' } })
+    server.calls.length = 0
+
+    await clearEntry(user, e.id, [f.id])
+    expect((await listOutbox(user)).map((item) => item.op)).toEqual([
+      { kind: 'entry.delete', id: e.id },
+    ])
+    expect(await flushOutbox(user, server.api)).toMatchObject({ synced: 1, parked: 0 })
+    expect(server.calls).toEqual([`deleteEntry ${e.id}`])
+    expect(server.entries.size).toBe(0)
+    expect(server.followups.size).toBe(0)
+    expect(await listOutbox(user)).toEqual([])
+  })
+
+  it('sends nothing of a log the server never had, and drops its draft', async () => {
+    const server = fakeServer()
+    const e = entry()
+    server.state.offline = true
+    await enqueue(user, { kind: 'entry.create', row: e })
+    await enqueue(user, { kind: 'followup.create', row: followup(e.id) })
+    await flushOutbox(user, server.api)
+    const key = draftKey(user, 'math', 'session-6', '2026-11-10')
+    await saveDraft({
+      key,
+      userId: user,
+      assignmentId: 'math',
+      planItemId: 'session-6',
+      date: '2026-11-10',
+      entryId: e.id,
+      editing: true,
+      fieldVersion: 2,
+      data: { minutes: 30 },
+      step: 0,
+      startedAt: '2026-11-10T20:00:00Z',
+      updatedAt: '2026-11-10T20:00:00Z',
+    })
+
+    await clearEntry(user, e.id, [])
+    expect(await getDraft(key)).toBeUndefined()
+    server.state.offline = false
+    server.calls.length = 0
+    expect(await flushOutbox(user, server.api)).toMatchObject({ synced: 1, parked: 0 })
+    expect(server.calls).toEqual([`deleteEntry ${e.id}`, `findEntry ${e.id}`])
+    expect(server.entries.size).toBe(0)
+    expect(await listOutbox(user)).toEqual([])
+  })
+
+  it('drops the photos waiting to upload with the log', async () => {
+    const e = entry()
+    const photo = id()
+    await putPhoto(user, photo, new Blob(['jpeg']))
+    await enqueue(user, { kind: 'entry.create', row: e })
+    await enqueue(user, { kind: 'photo.upload', id: photo, entry_id: e.id, owner_id: user })
+
+    await clearEntry(user, e.id, [])
+    expect(await getPhoto(photo)).toBeUndefined()
+    expect((await listOutbox(user)).map((item) => item.op.kind)).toEqual(['entry.delete'])
+  })
+
+  it('parks a clear the 7-day lock refuses, and keeps the log', async () => {
+    const server = fakeServer()
+    const e = entry()
+    server.entries.set(e.id, e)
+    server.state.locked.add(e.id)
+
+    await clearEntry(user, e.id, [])
+    expect((await flushOutbox(user, server.api)).parked).toBe(1)
+    expect((await listOutbox(user))[0]?.parked?.reason).toBe(REASONS.clearLocked)
+    expect(server.entries.has(e.id)).toBe(true)
+  })
+
+  it('waits, queued, while the server is unreachable', async () => {
+    const server = fakeServer()
+    const e = entry()
+    server.entries.set(e.id, e)
+    server.state.offline = true
+
+    await clearEntry(user, e.id, [])
+    expect((await flushOutbox(user, server.api)).offline).toBe(true)
+    expect((await listOutbox(user))[0]?.parked).toBeNull()
+    expect(server.entries.has(e.id)).toBe(true)
   })
 })
 

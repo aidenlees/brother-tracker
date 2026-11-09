@@ -33,6 +33,20 @@ export const supabaseOutboxApi: OutboxApi = {
     return result(error, status, rows?.length ?? 0)
   },
 
+  async deleteEntry(id) {
+    const {
+      data: rows,
+      error,
+      status,
+    } = await supabase.from('entries').delete().eq('id', id).select('id')
+    return result(error, status, rows?.length ?? 0)
+  },
+
+  async findEntry(id) {
+    const { data, error, status } = await supabase.from('entries').select('id').eq('id', id)
+    return result(error, status, data?.length ?? 0)
+  },
+
   async findEntryId({ assignment_id, date, plan_item_id }) {
     const query = supabase
       .from('entries')

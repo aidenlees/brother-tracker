@@ -33,6 +33,8 @@ export type FollowupPatch = Partial<Pick<FollowupRow, 'label' | 'due_date' | 'st
 export type Op =
   | { kind: 'entry.create'; row: EntryRow }
   | { kind: 'entry.update'; id: string; patch: EntryPatch }
+  /** Clear a log: the server deletes it, with its retries and comments. */
+  | { kind: 'entry.delete'; id: string }
   | { kind: 'followup.create'; row: FollowupRow }
   | { kind: 'followup.update'; id: string; patch: FollowupPatch }
   /** Upload a photo kept on the device, then add its attachments row (id = attachment id). */

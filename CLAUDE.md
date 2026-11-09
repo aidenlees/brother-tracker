@@ -31,7 +31,7 @@ Four rules decide every call. When two conflict, the earlier one wins.
 
    The test: *could the admin make this change from the admin screens a year from now, without code?* If not, redesign it.
 
-Two invariants outrank everything: **only a student writes their own entries** (enforced in the database), and **logging stays fast**. If a change trades either away, stop and ask.
+Two invariants outrank everything: **only a student creates or edits their own entries** (enforced in the database; the admin may only clear one, see rule 3), and **logging stays fast**. If a change trades either away, stop and ask.
 
 ---
 
@@ -102,7 +102,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
 | Role | Entries / followups / attachments | Trackers, templates, assignments, plan items | Profiles, viewer links | Comments |
 |---|---|---|---|---|
 | `student` | create; update/delete **own** (7-day window) | read **own** assignments and plan items | read own profile | read on own entries; reply on own |
-| `admin` | read all | create, update, archive | create, update | create |
+| `admin` | read all; clear (delete) an entry | create, update, archive | create, update | create |
 | `viewer` | read for **linked** students | read for linked students | read own profile | create on linked students' entries |
 
 **Login**
@@ -126,6 +126,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
    - Insert only when `owner_id = auth.uid()`, `role() = 'student'`, and the referenced assignment's `student_id = auth.uid()`.
    - Update and delete: the same, plus `created_at > now() - interval '7 days'`.
      - Exception: a followup's `status` can still change after 7 days (review sessions close old followups); its label and due date stay locked.
+   - The admin may also delete (clear) an entry, at any age, as an admin write (MFA once enrolled): for a log made by mistake. Never insert or update. Its followups, attachment rows and comments go with it (on delete cascade); `audit_log` keeps them. Attachment photos stay in the private bucket for now (no launch tracker has a photo field).
    - Select: `can_see(owner_id)`.
 4. **`profiles`, `viewer_links`:** write by admin only. Nobody can change their own role, even the admin through the client: role changes go through `admin-users` or SQL.
 5. **`trackers`, `tracker_versions`, `plan_templates`:**
@@ -220,7 +221,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
   - Mixed checks after chapters 5, 10 and 16: about 45 minutes of earlier problems to redo, named one by one.
 - `details` carries `session`, `week`, `topic`, `assignment`, `page_start`, `page_end`, `kind`, `reading_only` and `problems`, plus `pdf_offset` on items that have pages.
 - `problems`: one label per problem or lettered part on the session's pages, named by the page it's printed on (`p. 31 #4`, `p. 15 #2(e)`); mixed checks list the problems they name.
-- Pages are printed pages. Today states them plainly ("Pages 32–35") with the day's pages as a row of small images; a session's page shows them as a grid that opens each full size; the log page shows only the topic.
+- Pages are printed pages. Today states them plainly ("Pages 32–35") with no images, and "See the pages" opens the session's page, which shows them as a grid that opens each full size; the log page shows only the topic.
 - A session can be logged early, from Today's "Next" line or its page: the entry is dated the day it was done, so its retries are due two days after the work. Not before the plan's first day: entries are dated from the assignment's start to today (security rule 3), so the app doesn't offer it then.
 
 **Fields** (three steps)
@@ -251,11 +252,11 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 | Screen | Who | Notes |
 |---|---|---|
-| Today | student | One card per active assignment, top to bottom: today's pages as a row of small images (or the inline check-in; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
-| Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. |
+| Today | student | One card per active assignment, top to bottom: today's pages by number with "See the pages" (or the inline check-in, which can be cleared; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
+| Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. Editing a log within 7 days offers "Clear this log" (it goes with its retries, after a confirm); a locked one says to ask the admin. |
 | My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic and each check-in, with where it stands. Never a grade; no pacing flags. |
 | Session | student | One planned session: topic, date, problems, the book's pages as a grid (tap one for a full-size viewer with previous/next), and Log ("Log it early" ahead of its day). |
-| Overview | admin, viewer | Person picker (viewer: linked students only); per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
+| Overview | admin, viewer | Person picker (viewer: linked students only). So far: each log from the last 14 days, newest first, with every answer; the admin can clear one. Still to come, per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
 | Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
 | Retry queue | admin | Open followups, overdue first |
 | Plan editor | admin | Every session by week, each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
@@ -315,7 +316,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

@@ -48,6 +48,12 @@ export type Assignment = {
 const accent = (color: string): TrackerAccent =>
   (TRACKER_ACCENTS as readonly string[]).includes(color) ? (color as TrackerAccent) : 'ink-blue'
 
+/** A tracker row as this version of the app reads it, or null when it can't. */
+export function parseTracker(row: unknown): Tracker | null {
+  const parsed = TrackerRow.safeParse(row)
+  return parsed.success ? { ...parsed.data, color: accent(parsed.data.color) } : null
+}
+
 async function fetchAssignments(userId: string): Promise<Assignment[]> {
   const { data, error } = await supabase
     .from('assignments')
@@ -60,15 +66,12 @@ async function fetchAssignments(userId: string): Promise<Assignment[]> {
   return data
     .filter((row) => !row.tracker.archived)
     .sort((a, b) => a.tracker.sort - b.tracker.sort)
-    .map((row) => {
-      const parsed = TrackerRow.safeParse(row.tracker)
-      return {
-        id: row.id,
-        start_date: row.start_date,
-        tracker: parsed.success ? { ...parsed.data, color: accent(parsed.data.color) } : null,
-        trackerName: row.tracker.name,
-      }
-    })
+    .map((row) => ({
+      id: row.id,
+      start_date: row.start_date,
+      tracker: parseTracker(row.tracker),
+      trackerName: row.tracker.name,
+    }))
 }
 
 async function fetchPlanItems(assignmentIds: string[]): Promise<PlanItem[]> {
