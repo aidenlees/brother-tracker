@@ -1,0 +1,85 @@
+# Nightly copy of the cloud database: roles, schema and data (auth users included), as one
+# .tar.gz named for the New York date, in the private `backups` bucket, kept 30 days.
+# Book pages and photos are files in Storage and aren't in it (`pnpm book:pages` remakes
+# the pages; no tracker has a photo field yet).
+#
+# A switch, like every connector: it skips quietly until these Actions secrets exist
+# (Settings -> Secrets and variables -> Actions -> Secrets):
+#   SUPABASE_DB_URL       the Session pooler connection string, with the database password
+#                         (dashboard -> Connect). Not the direct one: runners have no IPv6.
+#   SUPABASE_SERVICE_KEY  a secret key (sb_secret_…), used only to upload and prune.
+# It also reads the VITE_SUPABASE_URL repository variable that Deploy uses.
+#
+# Nothing from the dump goes to the log or to an artifact: this repo is public, and anyone
+# signed in to GitHub can download a public repo's artifacts.
+#
+# To restore: download a copy from the dashboard (Storage -> backups), unpack it, and run
+#   psql --single-transaction --variable ON_ERROR_STOP=1 --file roles.sql --file schema.sql \
+#     --command 'SET session_replication_role = replica' --file data.sql --dbname "<target>"
+# (Supabase's "Backup and restore using the CLI" guide.)
+name: Backup
+
+on:
+  schedule:
+    # 08:30 UTC: 3:30 a.m. in New York (4:30 in summer), when nobody is logging.
+    - cron: '30 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+    steps:
+      - name: Check the secrets
+        id: secrets
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ] || [ -z "$SUPABASE_URL" ]; then
+            echo "Backup is off: set the SUPABASE_DB_URL and SUPABASE_SERVICE_KEY secrets to turn it on."
+            echo "on=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "on=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.secrets.outputs.on == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.secrets.outputs.on == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - if: steps.secrets.outputs.on == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: steps.secrets.outputs.on == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Dump the database
+        if: steps.secrets.outputs.on == 'true'
+        run: |
+          out="$RUNNER_TEMP/backup"
+          mkdir -p "$out"
+          dump() { pnpm supabase db dump --remote="$SUPABASE_DB_URL" "$@"; }
+          dump -f "$out/roles.sql" --role-only
+          dump -f "$out/schema.sql"
+          dump -f "$out/data.sql" --use-copy --data-only -x storage.buckets_vectors -x storage.vector_indexes
+          # A copy that can't bring the logs and the accounts back is no copy.
+          test -s "$out/roles.sql" && test -s "$out/schema.sql"
+          grep -q 'COPY "public"."entries"' "$out/data.sql"
+          grep -q 'COPY "auth"."users"' "$out/data.sql"
+          echo "DAY=$(TZ=America/New_York date +%F)" >> "$GITHUB_ENV"
+
+      - name: Upload it, and delete copies 30 or more days old
+        if: steps.secrets.outputs.on == 'true'
+        run: |
+          tar -czf "$RUNNER_TEMP/$DAY.tar.gz" -C "$RUNNER_TEMP/backup" roles.sql schema.sql data.sql
+          node scripts/backup.ts "$RUNNER_TEMP/$DAY.tar.gz" "$DAY"
