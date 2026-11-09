@@ -110,6 +110,8 @@ test.describe('@log the math log flow', () => {
       .toEqual([{ label: 'p. 32 #5' }])
 
     await math.getByRole('link', { name: 'Edit' }).click()
+    // Today's cards have level-2 headings too: wait until the log flow has replaced them.
+    await expect(page.getByRole('progressbar', { name: 'Progress' })).toBeVisible()
     await expect(step(page)).toContainText(COMPLETED)
     await page.getByRole('button', { name: 'Clear this log' }).click()
     const ask = page.getByRole('group', { name: /^Clear this log\?/ })
