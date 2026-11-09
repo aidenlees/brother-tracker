@@ -22,21 +22,16 @@ test.describe('@pages the book’s pages and My week', () => {
     expect(results.violations).toEqual([])
   }
 
-  test('Today shows every page small, in a row; the session page opens each full size', async ({
+  test('Today names the pages; the session page shows them and opens each full size', async ({
     page,
   }) => {
     await page.goto('today')
     const math = page.getByRole('region', { name: 'Singapore Math', exact: true })
-    const thumbnails = math.getByRole('list', { name: 'Pages to work on' })
-    await expect(thumbnails.getByRole('listitem')).toHaveCount(4)
-    await loaded(thumbnails.getByRole('img', { name: 'Page 32 of the book' }))
-    // All four sit side by side: one row, so the day's work shows at a glance.
-    const boxes = await Promise.all(
-      (await thumbnails.getByRole('listitem').all()).map((item) => item.boundingBox()),
-    )
-    expect(new Set(boxes.map((box) => Math.round(box?.y ?? -1))).size).toBe(1)
+    // No images of the book on Today: they're one tap away, on the session's page.
+    await expect(math.getByText('Pages 32–35', { exact: true })).toBeVisible()
+    await expect(math.getByRole('img', { name: /of the book$/ })).toHaveCount(0)
 
-    await math.getByRole('link', { name: 'Pages 32–35', exact: true }).click()
+    await math.getByRole('link', { name: 'See the pages' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Solve by Assuming' })).toBeVisible()
     await expect(page.getByText(/Pages 32–35$/)).toBeVisible()
     await expect(page.getByText('p. 32: #5, #6')).toBeVisible()

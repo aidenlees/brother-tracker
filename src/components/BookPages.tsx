@@ -1,49 +1,12 @@
 import { ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import { useState } from 'react'
-import { Link } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { useBookPages, type PageLinks } from '@/lib/book-pages'
 import { cn } from '@/lib/utils'
 
 /** A printed page's shape (the book is US letter), so nothing jumps while it loads. */
 const PAGE_ASPECT = 'aspect-[1400/1818]'
-
-/**
- * Every page of today's session as a small image, side by side, so how many there are
- * and how full they look shows at a glance. Each opens the session's page.
- */
-export function PageThumbnails({
-  slug,
-  pages,
-  href,
-}: {
-  slug: string
-  pages: readonly number[]
-  href: string
-}) {
-  const links = useBookPages(slug, pages)
-  if (pages.length === 0) return null
-  return (
-    <ul
-      aria-label="Pages to work on"
-      className="grid grid-cols-[repeat(auto-fill,minmax(3rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(3.5rem,1fr))]"
-    >
-      {pages.map((page) => (
-        <li key={page}>
-          <Link
-            to={href}
-            aria-label={`Page ${String(page)}, open the session’s pages`}
-            className="flex flex-col items-center gap-1 rounded-md transition-opacity hover:opacity-80"
-          >
-            <PageImage page={page} links={links.data} loading={links.isPending} thumbnail />
-            <span className="text-caption text-muted-foreground tabular-nums">{page}</span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  )
-}
 
 /**
  * A session's pages as a grid (three across on a phone, five on a laptop). Choosing one

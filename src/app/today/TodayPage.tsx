@@ -89,7 +89,6 @@ function AssignmentCard({
       {cadence === 'plan' ? (
         <PlanCard
           assignment={assignment}
-          slug={tracker.slug}
           items={items}
           entries={entries}
           drafts={drafts}
