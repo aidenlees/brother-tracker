@@ -48,7 +48,8 @@ export function Shell({
               tab's underline always sits on the header's rule. */}
           <div className="flex flex-wrap-reverse items-center justify-between gap-x-6">
             <nav aria-label="Main" className="min-w-0 overflow-x-auto">
-              <ul className="flex gap-6 text-small">
+              {/* The admin's long list sits closer, so it fits the column on a laptop. */}
+              <ul className={cn('flex text-small', screens.length > 6 ? 'gap-4' : 'gap-6')}>
                 {screens.map((screen) => (
                   <li key={screen.path}>
                     <NavLink

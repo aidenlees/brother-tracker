@@ -77,7 +77,7 @@ supabase db push         # apply migrations to the linked cloud project
 
 ```
 src/
-  app/            routes: today/, log/, session/, week/, overview/, struggles/, retries/, plan/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
+  app/            routes: today/, log/, session/, week/, overview/, struggles/, retries/, plan/, tasks/, builder/, people/, export/, settings/ (nav.ts maps each to its roles)
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
   trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, the last 7 days (week.ts), metrics
@@ -246,20 +246,28 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 - `practiced` (yes/no), plus `focus` (short text, required when yes).
 - Metrics: days per week, streak. Recent focus items are a list on Overview (Phase 3), not a metric.
 
+### `tasks` (cadence: plan with no template, `display: task_list`)
+
+- Work the admin adds when needed, for one student or several: each task is a plan item on the student's Tasks assignment (`title`, `details.notes`, and `details.series` shared by a repeating task's dates). The first task assigns the tracker (`assign_tracker`, start today).
+- One field, `done` (checkbox): ticking a task off on Today logs `{done: true}` dated today, through the outbox; unticking clears that log.
+- A task not done on its day stays on Today under "Still to do" until it's done or deleted. Deleting a done task clears its log first (entries keep their plan item).
+- Code finds the task tracker by `display: task_list`, never by slug. Metric: tasks done per week.
+
 ---
 
 ## Screens
 
 | Screen | Who | Notes |
 |---|---|---|
-| Today | student | One card per active assignment, top to bottom: today's pages by number with "See the pages" (or the inline check-in, which can be cleared; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
+| Today | student | One card per active assignment, top to bottom: today's pages by number with "See the pages" (or the inline check-in, which can be cleared, or the day's tasks to tick off; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
 | Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. Editing a log within 7 days offers "Clear this log" (it goes with its retries, after a confirm); a locked one says to ask the admin. |
-| My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic and each check-in, with where it stands. Never a grade; no pacing flags. |
+| My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic, each task with its notes, and each check-in, with where it stands. Never a grade; no pacing flags. |
 | Session | student | One planned session: topic, date, problems, the book's pages as a grid (tap one for a full-size viewer with previous/next), and Log ("Log it early" ahead of its day). |
 | Overview | admin, viewer | Person picker (viewer: linked students only). So far: each log from the last 14 days, newest first, with every answer; the admin can clear one. Still to come, per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
 | Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
 | Retry queue | admin | Open followups, overdue first |
-| Plan editor | admin | Every session by week, each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
+| Tasks | admin | Add a task for one student or several: title, optional notes, a day, and a repeat (every day or chosen weekdays, up to 100 days). Each student's tasks by day, done or not, with edit and delete (one, or the rest of a series). |
+| Plan editor | admin | Every session by week (tasks have their own screen), each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
 | People | admin | Add or disable accounts (via `admin-users`), set roles, link viewers to students, assign trackers with a start date |
 | Export | admin | CSV / .xlsx per tracker and person; math uses the original sheet's columns |
@@ -316,7 +324,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds.
   - *Done when:* the first digest matches a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

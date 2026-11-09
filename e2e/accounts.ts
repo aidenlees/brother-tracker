@@ -21,6 +21,7 @@ export const ACCOUNTS = {
       'Struggles',
       'Retry queue',
       'Plan',
+      'Tasks',
       'Trackers',
       'People',
       'Export',

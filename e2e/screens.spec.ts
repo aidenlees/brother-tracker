@@ -1,6 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ACCOUNTS, authFile, PASSWORD, ROLES, signIn } from './accounts'
-import { addDays, assignmentId, clearEntries, planItemId, todayNY } from './data'
+import {
+  addDays,
+  assignmentId,
+  clearEntries,
+  planItemId,
+  resetTasks,
+  seedTasks,
+  todayNY,
+} from './data'
 import { signedInClient } from './supabase'
 
 /**
@@ -179,6 +187,49 @@ for (const viewport of VIEWPORTS) {
           await page.goto(`log/${violin}?date=${addDays(todayNY(), -8)}`)
           await expect(page.getByText(/^Locked:/)).toBeVisible()
           await shot(page, 'locked')
+        })
+      })
+
+      test.describe('tasks', () => {
+        test.afterEach(resetTasks)
+
+        test('the Tasks screen, and Today with tasks', async ({ browser }) => {
+          resetTasks()
+          seedTasks('Sam', [
+            [addDays(todayNY(), -1), 'Redo p. 31 #4 with me', null],
+            [todayNY(), 'Read chapter 3 of Hatchet', 'Bring the book to dinner.'],
+            [todayNY(), 'Scales, 10 minutes', null],
+            [addDays(todayNY(), 1), 'Read chapter 4 of Hatchet', null],
+          ])
+          const admin = await browser.newContext({
+            storageState: authFile('admin'),
+            viewport: { width: viewport.width, height: viewport.height },
+            colorScheme: theme,
+            reducedMotion: 'reduce',
+          })
+          const page = await admin.newPage()
+          await page.goto('tasks')
+          await page.getByLabel('Student').selectOption({ label: 'Sam' })
+          await expect(page.getByText('Read chapter 3 of Hatchet')).toBeVisible()
+          await settled(page)
+          await shot(page, 'tasks')
+          await admin.close()
+
+          const student = await browser.newContext({
+            storageState: authFile('student'),
+            viewport: { width: viewport.width, height: viewport.height },
+            colorScheme: theme,
+            reducedMotion: 'reduce',
+          })
+          const today = await student.newPage()
+          await today.goto('today')
+          const tasks = today.getByRole('region', { name: 'Tasks', exact: true })
+          await tasks.getByText('Scales, 10 minutes').click()
+          await expect(tasks.getByRole('checkbox', { name: 'Scales, 10 minutes' })).toBeChecked()
+          await expect(today.getByText('Synced', { exact: true })).toBeVisible({ timeout: 20_000 })
+          await settled(today)
+          await shot(today, 'today-tasks')
+          await student.close()
         })
       })
 

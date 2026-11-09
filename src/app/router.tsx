@@ -11,6 +11,7 @@ import {
   OverviewPage,
   PlanPage,
   SessionPage,
+  TasksPage,
   TodayPage,
   WeekPage,
 } from './pages'
@@ -22,6 +23,7 @@ const BUILT: Partial<Record<string, ReactNode>> = {
   session: <SessionPage />,
   week: <WeekPage />,
   plan: <PlanPage />,
+  tasks: <TasksPage />,
   overview: <OverviewPage />,
 }
 
