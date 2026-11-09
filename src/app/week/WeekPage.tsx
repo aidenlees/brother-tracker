@@ -8,6 +8,7 @@ import { useStudentData, type Assignment } from '@/lib/student-data'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
 import { topicLabel, workLabel } from '@/trackers/plan'
+import { taskNotes } from '@/trackers/tasks'
 import { dayRows, weekDates, weekStart, type Row, type Status } from '@/trackers/schedule'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
 import { logPath, sessionPath } from '../log/paths'
@@ -149,13 +150,23 @@ function ScheduleRow({
 }) {
   const tracker = assignment.tracker
   if (!tracker) return null
+  // A task is ticked off on Today: it has no session page or log flow to open.
+  const task = tracker.display === 'task_list'
   const href =
     row.kind === 'session'
-      ? sessionPath(assignment.id, row.item.id)
+      ? task
+        ? null
+        : sessionPath(assignment.id, row.item.id)
       : row.date <= today
         ? logPath(assignment.id, { date: row.date })
         : null
-  const text = STATUS_TEXT[row.status]
+  const text = task && row.status === 'missed' ? 'Still to do' : STATUS_TEXT[row.status]
+  const detail =
+    row.kind !== 'session'
+      ? null
+      : task
+        ? [tracker.name, taskNotes(row.item.details)].filter(Boolean).join(' · ')
+        : `${tracker.name} · ${topicLabel(row.item.details) ?? row.item.title}`
   const body = (
     <>
       <TrackerIcon name={tracker.icon} className="size-4 shrink-0 self-start mt-1 text-tracker" />
@@ -163,11 +174,7 @@ function ScheduleRow({
         <span className="font-medium text-foreground tabular-nums">
           {row.kind === 'session' ? workLabel(row.item) : tracker.name}
         </span>
-        {row.kind === 'session' ? (
-          <span className="text-small text-muted-foreground">
-            {tracker.name} · {topicLabel(row.item.details) ?? row.item.title}
-          </span>
-        ) : null}
+        {detail ? <span className="text-small text-muted-foreground">{detail}</span> : null}
       </span>
       {text ? (
         <span

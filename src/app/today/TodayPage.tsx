@@ -13,11 +13,13 @@ import { useStudentData, type Assignment, type StudentData } from '@/lib/student
 import { useToday } from '@/lib/use-today'
 import { streak } from '@/trackers/metrics/streak'
 import { missedItems } from '@/trackers/plan'
+import { taskDay } from '@/trackers/tasks'
 import { dailyWeek, planWeek, streakLine } from '@/trackers/week'
 import { logPath } from '../log/paths'
 import { InlineCheckIn } from './InlineCheckIn'
 import { Missed } from './Missed'
 import { PlanCard } from './PlanCard'
+import { TaskCard } from './TaskCard'
 import { Retries } from './Retries'
 import { SavedNote, TrackerCard } from './TrackerCard'
 import { WeekStrip } from './WeekStrip'
@@ -82,6 +84,18 @@ function AssignmentCard({
 
   const entries = data.entries.filter((e) => e.assignment_id === assignment.id)
   const items = data.planItems.filter((item) => item.assignment_id === assignment.id)
+
+  // Tasks: a list to tick off, shown only while there's one to do or one coming.
+  if (tracker.display === 'task_list') {
+    const day = taskDay(items, entries, today)
+    if (day.today.length === 0 && day.earlier.length === 0 && !day.next) return null
+    return (
+      <TrackerCard name={tracker.name} icon={tracker.icon} color={tracker.color}>
+        <TaskCard assignment={assignment} tracker={tracker} day={day} today={today} />
+      </TrackerCard>
+    )
+  }
+
   const metric = tracker.metrics.find((m) => m.type === 'streak')
   const cadence = tracker.cadence.type
   const days =
