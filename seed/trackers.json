@@ -103,6 +103,18 @@
         { "key": "days_week", "type": "days_per_week", "label": "Practice days", "where": "practiced" },
         { "key": "streak", "type": "streak", "label": "Streak", "where": "practiced" }
       ]
+    },
+    {
+      "slug": "tasks",
+      "name": "Tasks",
+      "icon": "list-checks",
+      "color": "moss",
+      "sort": 3,
+      "cadence": { "type": "plan" },
+      "field_version": 1,
+      "display": "task_list",
+      "fields": [{ "key": "done", "type": "checkbox", "label": "Done", "required": true }],
+      "metrics": [{ "key": "done_week", "type": "count_where", "label": "Tasks done", "where": "done", "period": "week" }]
     }
   ]
 }

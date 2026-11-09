@@ -31,7 +31,7 @@ const { trackers } = parsed.data
 
 const plans = new Map<string, PlanFile>()
 for (const tracker of trackers) {
-  if (tracker.cadence.type !== 'plan') continue
+  if (tracker.cadence.type !== 'plan' || !tracker.cadence.plan_source) continue
   const source = tracker.cadence.plan_source
   const plan = PlanFile.safeParse(readJson(source))
   if (!plan.success) fail(`${source} is invalid:\n${plan.error.message}`)

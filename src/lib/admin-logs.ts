@@ -59,6 +59,8 @@ export function useRecentLogs(studentId: string | undefined, today: string) {
   return useQuery({
     queryKey: [userId, 'overview', 'logs', studentId, today],
     enabled: studentId !== undefined,
+    // Always fresh when opened: the student may have just logged.
+    staleTime: 0,
     queryFn: async (): Promise<LoggedEntry[]> => {
       const { data, error } = await supabase
         .from('entries')

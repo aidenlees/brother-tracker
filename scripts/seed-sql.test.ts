@@ -13,7 +13,7 @@ const sql = buildSeedSql({ trackers, plans: new Map([['singapore-math', math]]) 
 
 describe('seed files', () => {
   it('match the tracker definition schema', () => {
-    expect(trackers.map((t) => t.slug)).toEqual(['singapore-math', 'violin'])
+    expect(trackers.map((t) => t.slug)).toEqual(['singapore-math', 'violin', 'tasks'])
   })
 
   it('hold the six-day math plan', () => {

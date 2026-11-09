@@ -38,7 +38,7 @@ export function usePlanAssignments() {
       const { data, error } = await supabase
         .from('assignments')
         .select(
-          'id, start_date, plan_template_id, student:profiles!assignments_student_id_fkey(display_name), tracker:trackers!inner(id, slug, name, icon, color, cadence, archived)',
+          'id, start_date, plan_template_id, student:profiles!assignments_student_id_fkey(display_name), tracker:trackers!inner(id, slug, name, icon, color, cadence, display, archived)',
         )
         .eq('active', true)
       if (error) throw error
@@ -47,7 +47,9 @@ export function usePlanAssignments() {
           (row) =>
             !row.tracker.archived &&
             isRecord(row.tracker.cadence) &&
-            row.tracker.cadence.type === 'plan',
+            row.tracker.cadence.type === 'plan' &&
+            // Tasks have their own screen.
+            row.tracker.display !== 'task_list',
         )
         .map((row) => ({
           id: row.id,

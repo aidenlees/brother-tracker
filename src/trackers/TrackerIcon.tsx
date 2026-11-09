@@ -6,6 +6,7 @@ import {
   Code,
   Dumbbell,
   Languages,
+  ListChecks,
   Music,
   Palette,
   PenLine,
@@ -27,6 +28,7 @@ export const TRACKER_ICONS: Record<string, LucideIcon> = {
   palette: Palette,
   code: Code,
   dumbbell: Dumbbell,
+  'list-checks': ListChecks,
   circle: Circle,
 }
 

@@ -35,6 +35,7 @@ export const SCREENS: readonly Screen[] = [
   { path: 'struggles', label: 'Struggles', roles: ['admin', 'viewer'], inNav: true },
   { path: 'retries', label: 'Retry queue', roles: ['admin'], inNav: true },
   { path: 'plan', label: 'Plan', roles: ['admin'], inNav: true },
+  { path: 'tasks', label: 'Tasks', roles: ['admin'], inNav: true },
   { path: 'builder', label: 'Trackers', roles: ['admin'], inNav: true },
   { path: 'people', label: 'People', roles: ['admin'], inNav: true },
   { path: 'export', label: 'Export', roles: ['admin'], inNav: true },
