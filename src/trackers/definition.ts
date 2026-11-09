@@ -114,12 +114,20 @@ export const TrackerDefinition = z
     cadence: z.discriminatedUnion('type', [
       z.strictObject({
         type: z.literal('plan'),
-        plan_source: z.string().regex(/^seed\/[\w-]+\.json$/),
+        /** The seed file its plan template comes from; none when the admin adds every item (tasks). */
+        plan_source: z
+          .string()
+          .regex(/^seed\/[\w-]+\.json$/)
+          .optional(),
       }),
       z.strictObject({ type: z.literal('daily') }),
     ]),
     field_version: z.int().min(1),
-    display: z.enum(['inline_on_today_card']).optional(),
+    /**
+     * inline_on_today_card: a daily check-in logged on its Today card.
+     * task_list: plan items the admin adds one by one (Tasks), each ticked off on Today.
+     */
+    display: z.enum(['inline_on_today_card', 'task_list']).optional(),
     fields: z.array(FieldDefinition).min(1),
     metrics: z.array(MetricDefinition),
     followups: FollowupRules.optional(),

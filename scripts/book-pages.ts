@@ -43,7 +43,7 @@ const { trackers } = TrackersFile.parse(
   JSON.parse(readFileSync(join(root, 'seed', 'trackers.json'), 'utf8')),
 )
 for (const tracker of trackers) {
-  if (tracker.cadence.type !== 'plan') continue
+  if (tracker.cadence.type !== 'plan' || !tracker.cadence.plan_source) continue
   const plan = PlanFile.parse(
     JSON.parse(readFileSync(join(root, tracker.cadence.plan_source), 'utf8')),
   )
