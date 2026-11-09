@@ -69,6 +69,7 @@ pnpm e2e --project=pwa   # installed-app tests only: manifest, service worker, o
 pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/sizes/radii)
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
 supabase db push         # apply migrations to the linked cloud project
+# Nightly backup: .github/workflows/backup.yml (Actions -> Backup -> Run workflow runs it now); how to restore is at the top of that file
 
 # Before e2e on a fresh stack: supabase db reset && pnpm seed && pnpm e2e:fixtures && pnpm env:local
 ```
@@ -90,7 +91,7 @@ supabase/
 seed/
   trackers.json        launch tracker definitions
   math_sessions.json   the math plan (plan template source, built by `pnpm plan:math`), with each session's problem numbers (read once from the book, which stays out of the repo)
-scripts/               seed, plan-math, book-pages, env:local, e2e-fixtures (LOCAL ONLY), check-tokens, check-secrets, theme-colors
+scripts/               seed, plan-math, book-pages, env:local, e2e-fixtures (LOCAL ONLY), backup (the nightly upload and prune), check-tokens, check-secrets, theme-colors
 e2e/                   Playwright specs; supabase.ts talks to the local stack only
 .github/workflows/     ci.yml, deploy.yml, backup.yml
 ```
@@ -140,6 +141,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
 9. **Storage:** every bucket is private, and signed URLs last 10 minutes or less.
    - `attachments`: paths `{owner_id}/{entry_id}/{uuid}.jpg`. Policies mirror rule 3.
    - `book-pages`: the printed book's pages, `{tracker slug}/{3-digit page}.webp`. Read by whoever can see a student actively assigned that tracker; written by the admin only. The book and its images never enter the repo or the public site.
+   - `backups`: the nightly copy of the database, `{YYYY-MM-DD}.tar.gz`. No policies: only the service key (the backup workflow) and the dashboard reach it.
 10. **Keys:** only the publishable key (`sb_publishable_…`, the `anon` role) ships to the client; never the legacy anon JWT. The service key lives only in Edge Function and Actions secrets. CI fails on `service_role` or JWT-looking strings in `src/` or `dist/`.
 11. **Every policy change ships with pgTAP tests proving the refusals, written first.** Each of these must fail:
     - an admin insert
@@ -189,7 +191,7 @@ push_subscriptions (id, user_id, endpoint, keys jsonb, remind_at time)
 - `entries.data` is validated in the browser by a Zod schema built from the tracker's fields.
 - It's validated again in the database by a trigger that checks it against `tracker_versions.fields` for the entry's `field_version`.
 
-**Weekly metrics** come from SQL views, per student and tracker. Weeks start Sunday in `America/New_York`.
+**Weekly metrics** are worked out in the app by one TypeScript module from each tracker's `metrics` list, per student and tracker, so a new tracker needs no new code or SQL. Weeks start Sunday in `America/New_York`.
 
 ### Field types (registry in `src/trackers/fields/`)
 
@@ -298,6 +300,8 @@ Navigation shows only the screens a role can use.
 
 ## Connectors (Edge Functions + pg_cron). Each one is a switch: it skips quietly if its secrets are unset.
 
+Built so far: `backup`. `admin-users` comes with People (Phase 4); `digest-email`, `push-reminders` and `calendar-sync` wait until the admin asks for them (decided 2026-11-09).
+
 | Function | Schedule | Does | Secrets |
 |---|---|---|---|
 | `admin-users` | on call | Create or disable accounts and set passwords. Admin callers only. | service key (built in) |
@@ -305,7 +309,7 @@ Navigation shows only the screens a role can use.
 | `push-reminders` | every 15 min | Web Push at each student's `remind_at`, plus one 20:00 nudge if a plan item is unlogged | VAPID keys |
 | `calendar-sync` | on plan_items change + nightly | Mirrors plan items to a shared Google Calendar | `GOOGLE_SA_JSON`, `CALENDAR_ID` |
 | `keep-alive` | weekly | A trivial query so the free project never pauses | none |
-| `backup` (Actions) | nightly | `pg_dump` to a private bucket, kept 30 days | Actions secrets |
+| `backup` (Actions) | nightly, 3:30 a.m. ET | Roles, schema and data (`supabase db dump`, auth users included) as one dated .tar.gz in the private `backups` bucket, kept 30 days | Actions secrets `SUPABASE_DB_URL` (session pooler), `SUPABASE_SERVICE_KEY` |
 
 No LLM API calls from this app.
 
@@ -323,9 +327,9 @@ Mark the current phase when it changes.
   - *Done when:* the student logs a real session on a laptop in under 2 minutes, unaided.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
-  - Builds: Overview, My week, Struggles, comments, retry queue, plan editor, push, calendar, digest.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds.
-  - *Done when:* the first digest matches a hand check.
+  - Builds: Overview (with the weekly numbers), My week, Struggles, comments, retry queue, plan editor, tasks, the nightly backup.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup.
+  - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.
   - *Done when:* a third tracker is built in under 5 minutes with no code, and a second test student is added and assigned math with a shifted start date, all from the UI.
