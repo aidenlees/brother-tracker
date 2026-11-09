@@ -2,7 +2,7 @@
  * What students have logged, for Overview (admin and viewers). RLS decides who appears:
  * the admin reads every student, a viewer only the students linked to them (rule 3,
  * select by can_see). Clearing a log is the admin's only write to entries
- * (entries_delete_admin); it goes straight to the server, since the admin works online.
+ * (the entries_delete policy); it goes straight to the server, since the admin works online.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { isRecord } from '@/trackers/fields/contract'
