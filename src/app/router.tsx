@@ -10,6 +10,7 @@ import {
   LoginPage,
   OverviewPage,
   PlanPage,
+  RetriesPage,
   SessionPage,
   StrugglesPage,
   TasksPage,
@@ -27,6 +28,7 @@ const BUILT: Partial<Record<string, ReactNode>> = {
   tasks: <TasksPage />,
   overview: <OverviewPage />,
   struggles: <StrugglesPage />,
+  retries: <RetriesPage />,
 }
 
 export const router = createBrowserRouter(
