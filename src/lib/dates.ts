@@ -59,3 +59,14 @@ export function formatDay(iso: string, style: 'short' | 'long' = 'short'): strin
     day: 'numeric',
   }).format(utc(iso))
 }
+
+/** The week from a Sunday: "November 8 – 14", or "November 29 – December 5" across a month. */
+export function weekRange(sunday: string): string {
+  const saturday = addDays(sunday, 6)
+  const month = (iso: string) =>
+    new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long' }).format(utc(iso))
+  const day = (iso: string) => String(Number(iso.slice(8)))
+  return month(sunday) === month(saturday)
+    ? `${month(sunday)} ${day(sunday)} – ${day(saturday)}`
+    : `${month(sunday)} ${day(sunday)} – ${month(saturday)} ${day(saturday)}`
+}

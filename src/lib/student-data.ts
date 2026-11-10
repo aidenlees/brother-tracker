@@ -74,7 +74,7 @@ async function fetchAssignments(userId: string): Promise<Assignment[]> {
     }))
 }
 
-async function fetchPlanItems(assignmentIds: string[]): Promise<PlanItem[]> {
+export async function fetchPlanItems(assignmentIds: string[]): Promise<PlanItem[]> {
   if (assignmentIds.length === 0) return []
   const { data, error } = await supabase
     .from('plan_items')
@@ -89,7 +89,7 @@ async function fetchPlanItems(assignmentIds: string[]): Promise<PlanItem[]> {
   }))
 }
 
-async function fetchEntries(userId: string) {
+export async function fetchEntries(userId: string) {
   const { data, error } = await supabase
     .from('entries')
     .select('id, assignment_id, plan_item_id, field_version, date, data, created_at')

@@ -1,4 +1,5 @@
 import { useId, useState, type CSSProperties } from 'react'
+import { useSearchParams } from 'react-router'
 import { ClearLog } from '@/components/ClearLog'
 import { EmptyNote, Page } from '@/components/Page'
 import { useAuth } from '@/lib/auth-context'
@@ -15,17 +16,32 @@ import { useToday } from '@/lib/use-today'
 import { shownFields } from '@/trackers/entry'
 import { FIELD_REGISTRY } from '@/trackers/fields/registry'
 import { sessionLabel, workLabel } from '@/trackers/plan'
+import { weekStart } from '@/trackers/schedule'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
+import { WeekNumbers } from './WeekNumbers'
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Overview (admin, viewers): what a student has logged in the last two weeks, newest
- * first, with each answer. The admin can clear a log made by mistake; viewers only read.
- * Weekly numbers and trends come next (Phase 3).
+ * Overview (admin, viewers): how a student's week went, tracker by tracker, then what
+ * they logged in the last two weeks, newest first, with each answer. The admin also sees
+ * pacing flags and can clear a log made by mistake; viewers only read.
  */
 export function OverviewPage() {
   const students = useStudents()
   const [chosen, setChosen] = useState<string | null>(null)
   const pickerId = useId()
+  const recentId = useId()
+  const today = useToday()
+  const auth = useAuth()
+  const isAdmin = auth.status === 'signed-in' && auth.profile.role === 'admin'
+  const [search] = useSearchParams()
+  const asked = search.get('week')
+  const thisWeek = weekStart(today)
+  const picked = weekStart(asked && ISO_DATE.test(asked) ? asked : today)
+  // Overview looks back: a week still to come shows this one.
+  const sunday = picked > thisWeek ? thisWeek : picked
+  const weekLink = (start: string) => (start === thisWeek ? '/overview' : `/overview?week=${start}`)
 
   if (students.status === 'pending') {
     return (
@@ -53,10 +69,7 @@ export function OverviewPage() {
     )
   }
   return (
-    <Page
-      title="Overview"
-      lead={`What’s been logged in the last ${RECENT_DAYS} days, newest first.`}
-    >
+    <Page title="Overview" lead="How each week went, and every log from the last two weeks.">
       {list.length > 1 ? (
         <label htmlFor={pickerId} className="flex flex-col gap-2 text-small text-muted-foreground">
           Student
@@ -78,15 +91,31 @@ export function OverviewPage() {
       ) : (
         <p className="text-body text-foreground">{student.name}</p>
       )}
-      <Logs key={student.id} student={student} />
+      <WeekNumbers
+        key={student.id}
+        student={student}
+        sunday={sunday}
+        thisWeek={thisWeek}
+        today={today}
+        isAdmin={isAdmin}
+        weekLink={weekLink}
+      />
+      <section aria-labelledby={recentId} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 id={recentId} className="font-heading text-title text-foreground">
+            Recent logs
+          </h2>
+          <p className="text-small text-muted-foreground">
+            The last {RECENT_DAYS} days, newest first.
+          </p>
+        </div>
+        <Logs key={student.id} student={student} today={today} isAdmin={isAdmin} />
+      </section>
     </Page>
   )
 }
 
-function Logs({ student }: { student: Student }) {
-  const today = useToday()
-  const auth = useAuth()
-  const isAdmin = auth.status === 'signed-in' && auth.profile.role === 'admin'
+function Logs({ student, today, isAdmin }: { student: Student; today: string; isAdmin: boolean }) {
   const logs = useRecentLogs(student.id, today)
   const clear = useClearLog()
   const [notice, setNotice] = useState<string | null>(null)
@@ -122,9 +151,9 @@ function Logs({ student }: { student: Student }) {
       ) : (
         days.map((day) => (
           <section key={day} aria-label={formatDay(day, 'long')} className="flex flex-col gap-3">
-            <h2 className="text-body font-medium text-foreground">
+            <h3 className="text-body font-medium text-foreground">
               {day === today ? `Today · ${formatDay(day, 'long')}` : formatDay(day, 'long')}
-            </h2>
+            </h3>
             <ul className="flex flex-col gap-4">
               {logs.data
                 .filter((log) => log.date === day)
@@ -178,7 +207,7 @@ function LogCard({ log, onClear }: { log: LoggedEntry; onClear: (() => Promise<v
       className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 sm:p-6"
     >
       <header className="flex flex-col gap-1">
-        <h3
+        <h4
           id={headingId}
           className="flex items-center gap-2 text-body font-medium text-foreground"
         >
@@ -186,7 +215,7 @@ function LogCard({ log, onClear }: { log: LoggedEntry; onClear: (() => Promise<v
             <TrackerIcon name={tracker.icon} className="size-4 shrink-0 text-tracker" />
           ) : null}
           {log.trackerName}
-        </h3>
+        </h4>
         {session ? (
           <p className="text-small text-muted-foreground tabular-nums">{session}</p>
         ) : null}
