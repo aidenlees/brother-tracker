@@ -36,6 +36,14 @@
       ],
       "metrics": [
         {
+          "key": "completed_week",
+          "type": "count_where",
+          "label": "Sessions completed",
+          "where": "completed or read",
+          "period": "week"
+        },
+        { "key": "minutes_week", "type": "sum", "label": "Minutes", "field": "minutes", "period": "week" },
+        {
           "key": "independent_rate",
           "type": "ratio",
           "label": "Solved on my own",
@@ -43,15 +51,7 @@
           "denominator": "count(plan.problems)",
           "format": "percent",
           "nullWhen": "denominator = 0"
-        },
-        {
-          "key": "completed_week",
-          "type": "count_where",
-          "label": "Sessions completed",
-          "where": "completed or read",
-          "period": "week"
-        },
-        { "key": "minutes_week", "type": "sum", "label": "Minutes", "field": "minutes", "period": "week" }
+        }
       ],
       "followups": {
         "from": "struggled",
@@ -62,19 +62,19 @@
         {
           "key": "slow_down",
           "label": "Slow down: address the gap",
-          "rule": "in a week, problems struggled with > problems solved on my own",
+          "when": { "type": "week_below", "metric": "independent_rate", "value": 0.5 },
           "audience": "admin"
         },
         {
           "key": "trim_repetition",
           "label": "Consider trimming repetition",
-          "rule": "last 3 sessions each independent_rate >= 0.8",
+          "when": { "type": "last_sessions_at_least", "metric": "independent_rate", "sessions": 3, "value": 0.8 },
           "audience": "admin"
         },
         {
           "key": "behind_plan",
           "label": "Behind plan",
-          "rule": "2 or more past plan items with no entry",
+          "when": { "type": "missed_sessions", "atLeast": 2 },
           "audience": "admin"
         }
       ]
