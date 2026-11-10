@@ -82,13 +82,34 @@ export const MetricDefinition = z.looseObject({
   type: z.enum(METRIC_TYPES),
   label: z.string().min(1),
 })
+export type MetricDefinition = z.infer<typeof MetricDefinition>
 
+/**
+ * When a pacing flag is on (src/trackers/metrics/flags.ts reads it), for the week shown:
+ *   week_below              a metric's value for the week is below `value`
+ *   last_sessions_at_least  each of the last `sessions` sessions has a ratio metric at `value` or more
+ *   missed_sessions         `atLeast` past sessions have no log
+ */
+export const PacingRule = z.discriminatedUnion('type', [
+  z.strictObject({ type: z.literal('week_below'), metric: key, value: z.number() }),
+  z.strictObject({
+    type: z.literal('last_sessions_at_least'),
+    metric: key,
+    sessions: z.int().min(1),
+    value: z.number(),
+  }),
+  z.strictObject({ type: z.literal('missed_sessions'), atLeast: z.int().min(1) }),
+])
+export type PacingRule = z.infer<typeof PacingRule>
+
+/** Shown to the admin only: never to students or viewers. */
 export const PacingFlag = z.strictObject({
   key,
   label: z.string().min(1),
-  rule: z.string().min(1),
+  when: PacingRule,
   audience: z.literal('admin'),
 })
+export type PacingFlag = z.infer<typeof PacingFlag>
 
 export const FollowupRules = z.strictObject({
   /** A plan_checklist field: each item checked in it becomes a followup with that label. */

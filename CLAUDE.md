@@ -206,6 +206,8 @@ push_subscriptions (id, user_id, endpoint, keys jsonb, remind_at time)
 
 `sum`, `avg`, `count_where`, `ratio`, `streak`, `days_per_week`.
 - A metric with a zero denominator, or nothing to count, returns null. Show it as blank, never as 0 or NaN.
+- The engine is `src/trackers/metrics/`. Rules are data in two small forms: `where` names a field that must be true, or several joined by "or" ("completed or read"); a ratio's terms add and subtract `count(x)` (how many items the list x holds, "plan." for the plan item) and whole numbers. A rule it can't read gives a blank, and a test reads every seeded rule.
+- A week's ratio pools its sessions (all problems solved on my own over all problems). A streak in a past week is the run as it stood on its Saturday.
 - New trackers start with the default fields `did` and `struggled`; the admin can remove them.
 
 ---
@@ -238,15 +240,15 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 **Followups:** each problem checked in `struggled` becomes a retry with its label, due in 2 days (`followups.from`). An edit drops the retry of a problem no longer checked; one already done is never made again. Review sessions (`kind` is `review` or `mixed_check`, set by `followups.listAllOpenWhen`) list everything still open.
 
-**Pacing flags** (admin only, never shown to students):
-- "Slow down": in a week, more problems struggled with than solved on my own
-- "Trim repetition": 3 sessions in a row at ≥ 0.8
-- "Behind plan": 2 or more missed sessions
+**Pacing flags** (admin only, never shown to students or viewers; rules are data, `pacingFlags[].when`, judged for the week shown):
+- "Slow down": in a week, more problems struggled with than solved on my own (`week_below` 0.5)
+- "Trim repetition": the last 3 sessions each at ≥ 0.8 (`last_sessions_at_least`)
+- "Behind plan": 2 or more past sessions with no log (`missed_sessions`)
 
 ### `violin` (cadence: daily, `display: inline_on_today_card`)
 
 - `practiced` (yes/no), plus `focus` (short text, required when yes).
-- Metrics: days per week, streak. Recent focus items are a list on Overview (Phase 3), not a metric.
+- Metrics: days per week, streak. The week's focus notes are a list on Overview, not a metric (every `short_text` answer of a tracker is).
 
 ### `tasks` (cadence: plan with no template, `display: task_list`)
 
@@ -265,7 +267,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 | Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. Editing a log within 7 days offers "Clear this log" (it goes with its retries, after a confirm); a locked one says to ask the admin. |
 | My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic, each task with its notes, and each check-in, with where it stands. Never a grade; no pacing flags. |
 | Session | student | One planned session: topic, date, problems, the book's pages as a grid (tap one for a full-size viewer with previous/next), and Log ("Log it early" ahead of its day). |
-| Overview | admin, viewer | Person picker (viewer: linked students only). So far: each log from the last 14 days, newest first, with every answer; the admin can clear one. Still to come, per tracker: week vs last, trend, minutes, streaks; pacing flags for admin only |
+| Overview | admin, viewer | Person picker (viewer: linked students only). A week at a time (this one, or any week back): per tracker, each metric beside last week's, the week's notes, and pacing flags for the admin only; a tracker not yet started says when it starts. Then each log from the last 14 days, newest first, with every answer; the admin can clear one. Still to come: an 8-week trend (early December, once there are weeks to show) |
 | Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
 | Retry queue | admin | Open followups, overdue first |
 | Tasks | admin | Add a task for one student or several: title, optional notes, a day, and a repeat (every day or chosen weekdays, up to 100 days). Each student's tasks by day, done or not, with edit and delete (one, or the rest of a series). |
@@ -328,7 +330,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview (with the weekly numbers), My week, Struggles, comments, retry queue, plan editor, tasks, the nightly backup.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags.
   - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

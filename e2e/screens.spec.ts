@@ -96,11 +96,25 @@ for (const viewport of VIEWPORTS) {
         test('a log in Overview, about to be cleared', async ({ page }) => {
           await page.goto('overview')
           await page.getByLabel('Student').selectOption({ label: 'Sam' })
-          const log = page.getByRole('article', { name: 'Singapore Math' }).first()
+          const log = page
+            .getByRole('region', { name: 'Recent logs' })
+            .getByRole('article', { name: 'Singapore Math' })
+            .first()
           await log.getByRole('button', { name: 'Clear this log' }).click()
           await expect(log.getByRole('button', { name: 'Keep it' })).toBeFocused()
           await settled(page)
           await shot(page, 'overview-clear')
+        })
+
+        test('a week’s numbers in Overview, with a pacing flag', async ({ page }) => {
+          const ago = addDays(todayNY(), -2)
+          await page.goto(
+            `overview?week=${addDays(ago, -new Date(`${ago}T00:00:00Z`).getUTCDay())}`,
+          )
+          await page.getByLabel('Student').selectOption({ label: 'Riley' })
+          await expect(page.getByRole('list', { name: 'Pacing flags' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'overview-week')
         })
       })
 

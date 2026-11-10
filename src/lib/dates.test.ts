@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, daysBetween, formatDay, longDateInNewYork, todayInNewYork } from './dates'
+import {
+  addDays,
+  daysBetween,
+  formatDay,
+  longDateInNewYork,
+  todayInNewYork,
+  weekRange,
+} from './dates'
 
 describe('longDateInNewYork', () => {
   it('names the New York day, not the UTC one', () => {
@@ -50,5 +57,10 @@ describe('calendar dates', () => {
   it('format a date as the day it names, whatever the machine’s zone', () => {
     expect(formatDay('2026-11-10')).toBe('Tue, Nov 10')
     expect(formatDay('2026-11-08', 'long')).toBe('Sunday, November 8')
+  })
+
+  it('name a week from its Sunday, across a month too', () => {
+    expect(weekRange('2026-11-08')).toBe('November 8 – 14')
+    expect(weekRange('2026-11-29')).toBe('November 29 – December 5')
   })
 })

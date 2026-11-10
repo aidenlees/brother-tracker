@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
-import { addDays, formatDay } from '@/lib/dates'
+import { addDays, formatDay, weekRange } from '@/lib/dates'
 import { useStudentData, type Assignment } from '@/lib/student-data'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -14,19 +14,6 @@ import { TrackerIcon } from '@/trackers/TrackerIcon'
 import { logPath, sessionPath } from '../log/paths'
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-
-/** "November 8 – 14", or "October 25 – November 1" across a month. */
-function rangeLabel(sunday: string): string {
-  const saturday = addDays(sunday, 6)
-  const month = (iso: string) =>
-    new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long' }).format(
-      new Date(`${iso}T00:00:00Z`),
-    )
-  const day = (iso: string) => String(Number(iso.slice(8)))
-  return month(sunday) === month(saturday)
-    ? `${month(sunday)} ${day(sunday)} – ${day(saturday)}`
-    : `${month(sunday)} ${day(sunday)} – ${month(saturday)} ${day(saturday)}`
-}
 
 /**
  * My week answers one question: what's planned, day by day? Sunday to Saturday, with
@@ -44,7 +31,7 @@ export function WeekPage() {
   const weekLink = (start: string) => (start === thisWeek ? '/week' : `/week?week=${start}`)
 
   return (
-    <Page title="My week" lead={rangeLabel(sunday)}>
+    <Page title="My week" lead={weekRange(sunday)}>
       <nav aria-label="Weeks" className="flex flex-wrap items-center gap-2">
         <Button asChild variant="outline" size="sm">
           <Link to={weekLink(addDays(sunday, -7))}>
