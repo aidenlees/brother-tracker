@@ -36,7 +36,7 @@ test.describe('screens a role cannot use', () => {
   test.use({ storageState: authFile('student') })
 
   test('send a student back to Today', async ({ page }) => {
-    for (const path of ['overview', 'struggles', 'people', 'export']) {
+    for (const path of ['overview', 'struggles', 'retries', 'people', 'export']) {
       await page.goto(path)
       await expect(page).toHaveURL(/\/today$/)
     }

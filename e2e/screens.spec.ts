@@ -158,6 +158,14 @@ for (const viewport of VIEWPORTS) {
           await shot(page, 'struggles')
           clearComments()
         })
+
+        test('the Retry queue', async ({ page }) => {
+          await page.goto('retries')
+          await page.getByLabel('Student').selectOption({ label: 'Riley' })
+          await expect(page.getByRole('region', { name: 'Overdue' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'retries')
+        })
       })
 
       test.describe('student', () => {
