@@ -17,7 +17,7 @@ select is((
   select array_agg(p.proname::text order by p.proname)
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'private'
-), array['admin_can_write', 'admin_mfa_ok', 'book_page_slug', 'can_read_book', 'can_see', 'is_admin', 'role'],
+), array['admin_can_write', 'admin_mfa_ok', 'book_page_slug', 'can_read_book', 'can_see', 'is_admin', 'role', 'wrote_visible_comment'],
   'private holds exactly the security helpers (and the book-pages path check)');
 
 select is((
