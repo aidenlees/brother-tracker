@@ -102,9 +102,9 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
 
 | Role | Entries / followups / attachments | Trackers, templates, assignments, plan items | Profiles, viewer links | Comments |
 |---|---|---|---|---|
-| `student` | create; update/delete **own** (7-day window) | read **own** assignments and plan items | read own profile | read on own entries; reply on own |
+| `student` | create; update/delete **own** (7-day window) | read **own** assignments and plan items | read own profile, and commenters' | read on own entries; reply on own |
 | `admin` | read all; clear (delete) an entry | create, update, archive | create, update | create |
-| `viewer` | read for **linked** students | read for linked students | read own profile | create on linked students' entries |
+| `viewer` | read for **linked** students | read for linked students | read own profile, linked students', and commenters' | create on linked students' entries |
 
 **Login**
 - Email + password. Accounts are created by the admin, never by sign-up.
@@ -130,6 +130,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
    - The admin may also delete (clear) an entry, at any age, as an admin write (MFA once enrolled): for a log made by mistake. Never insert or update. Its followups, attachment rows and comments go with it (on delete cascade); `audit_log` keeps them. Attachment photos stay in the private bucket for now (no launch tracker has a photo field).
    - Select: `can_see(owner_id)`.
 4. **`profiles`, `viewer_links`:** write by admin only. Nobody can change their own role, even the admin through the client: role changes go through `admin-users` or SQL.
+   - Read a profile when it's your own, `can_see(id)`, or its owner commented on an entry you can see (`private.wrote_visible_comment`), so a comment shows who wrote it.
 5. **`trackers`, `tracker_versions`, `plan_templates`:**
    - Write by admin only.
    - Read: all signed-in users for `trackers` and `tracker_versions`; admin only for `plan_templates`.
@@ -137,6 +138,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
 7. **`comments`:**
    - Insert when `can_see(entry owner)` and the caller is admin, a viewer, or the entry's own student.
    - Authors edit and delete only their own comments.
+   - Comments go straight to the server (no outbox): if posting fails, what was typed stays in the box.
 8. **Audit:** an `audit_log` trigger on every table above records actor, action, before and after.
 9. **Storage:** every bucket is private, and signed URLs last 10 minutes or less.
    - `attachments`: paths `{owner_id}/{entry_id}/{uuid}.jpg`. Policies mirror rule 3.
@@ -263,12 +265,12 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 
 | Screen | Who | Notes |
 |---|---|---|
-| Today | student | One card per active assignment, top to bottom: today's pages by number with "See the pages" (or the inline check-in, which can be cleared, or the day's tasks to tick off; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, earlier sessions to log (folded), the last 7 days with the streak in plain words. |
+| Today | student | One card per active assignment, top to bottom: today's pages by number with "See the pages" (or the inline check-in, which can be cleared, or the day's tasks to tick off; after saving, one line for what's next, with "Done it early? Log it"; sessions logged early are listed), due followups, a line for each log someone commented on in the last 7 days ("Alex commented on Session 4 · …", opening its session page), earlier sessions to log (folded), the last 7 days with the streak in plain words. |
 | Log session | student | One step per screen; autosaves to IndexedDB; works offline; Enter moves on. Math: completed, problems struggled with (checkboxes), minutes. Editing a log within 7 days offers "Clear this log" (it goes with its retries, after a confirm); a locked one says to ask the admin. |
 | My week | student | Day by day, Sunday to Saturday, any week back or ahead: each session's pages and topic, each task with its notes, and each check-in, with where it stands. Never a grade; no pacing flags. |
-| Session | student | One planned session: topic, date, problems, the book's pages as a grid (tap one for a full-size viewer with previous/next), and Log ("Log it early" ahead of its day). |
-| Overview | admin, viewer | Person picker (viewer: linked students only). A week at a time (this one, or any week back): per tracker, each metric beside last week's, the week's notes, and pacing flags for the admin only; a tracker not yet started says when it starts. Then each log from the last 14 days, newest first, with every answer; the admin can clear one. Still to come: an 8-week trend (early December, once there are weeks to show) |
-| Struggles | admin, viewer | Every struggled problem, newest first, filterable, with inline comments |
+| Session | student | One planned session: topic, date, problems, the book's pages as a grid (tap one for a full-size viewer with previous/next), and Log ("Log it early" ahead of its day). Once someone comments on its log, the conversation, with Reply. |
+| Overview | admin, viewer | Person picker (viewer: linked students only). A week at a time (this one, or any week back): per tracker, each metric beside last week's, the week's notes, and pacing flags for the admin only; a tracker not yet started says when it starts. Then each log from the last 14 days, newest first, with every answer; the admin can clear one, and a log with a struggle links to it on Struggles. Still to come: an 8-week trend (early December, once there are weeks to show) |
+| Struggles | admin, viewer | Person picker. Each log with a struggle, newest first: the session, each problem with where its retry stands (due, overdue, done, dropped), and its comments with a box to add one (edit or delete your own). Filter: All, or Retry still open. Reads `entries.struggled`, so any tracker with that field shows. |
 | Retry queue | admin | Open followups, overdue first |
 | Tasks | admin | Add a task for one student or several: title, optional notes, a day, and a repeat (every day or chosen weekdays, up to 100 days). Each student's tasks by day, done or not, with edit and delete (one, or the rest of a series). |
 | Plan editor | admin | Every session by week (tasks have their own screen), each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
@@ -330,7 +332,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview (with the weekly numbers), My week, Struggles, comments, retry queue, plan editor, tasks, the nightly backup.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags; then Struggles and comments.
   - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.
