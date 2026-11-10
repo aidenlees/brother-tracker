@@ -3,6 +3,7 @@ import {
   addDays,
   daysBetween,
   formatDay,
+  formatMoment,
   longDateInNewYork,
   todayInNewYork,
   weekRange,
@@ -62,5 +63,13 @@ describe('calendar dates', () => {
   it('name a week from its Sunday, across a month too', () => {
     expect(weekRange('2026-11-08')).toBe('November 8 – 14')
     expect(weekRange('2026-11-29')).toBe('November 29 – December 5')
+  })
+})
+
+describe('formatMoment', () => {
+  it('gives the New York day and time of a timestamp', () => {
+    // 01:15 UTC on Nov 10 is still the evening of Nov 9 in New York.
+    expect(formatMoment('2026-11-10T01:15:00Z')).toBe('Mon, Nov 9, 8:15 PM')
+    expect(formatMoment('2026-11-10T15:05:00+00:00')).toBe('Tue, Nov 10, 10:05 AM')
   })
 })

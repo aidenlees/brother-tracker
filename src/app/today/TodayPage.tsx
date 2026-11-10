@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
 import { useAppUpdate } from '@/lib/app-update'
+import { useRecentComments, type Comment } from '@/lib/comments'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import { isEditable, type EntryView } from '@/lib/outbox/overlay'
@@ -16,6 +17,7 @@ import { missedItems } from '@/trackers/plan'
 import { taskDay } from '@/trackers/tasks'
 import { dailyWeek, planWeek, streakLine } from '@/trackers/week'
 import { logPath } from '../log/paths'
+import { CommentLines } from './CommentLines'
 import { InlineCheckIn } from './InlineCheckIn'
 import { Missed } from './Missed'
 import { PlanCard } from './PlanCard'
@@ -29,6 +31,7 @@ export function TodayPage() {
   const today = useToday()
   const data = useStudentData()
   const drafts = useDrafts(useOutbox().userId)
+  const comments = useRecentComments()
   /** Set by the log flow: after a save, so that entry's check mark eases in; after a clear. */
   const state = useLocation().state as { saved?: string; cleared?: boolean } | null
   const savedId = state?.saved
@@ -56,6 +59,7 @@ export function TodayPage() {
               assignment={assignment}
               data={data}
               drafts={drafts.filter((d) => d.assignmentId === assignment.id)}
+              comments={comments.data ?? []}
               savedId={savedId}
               today={today}
             />
@@ -70,12 +74,15 @@ function AssignmentCard({
   assignment,
   data,
   drafts,
+  comments,
   savedId,
   today,
 }: {
   assignment: Assignment
   data: StudentData
   drafts: Draft[]
+  /** Recent comments by others, on any of the student's logs. */
+  comments: readonly Comment[]
   savedId?: string
   today: string
 }) {
@@ -142,6 +149,7 @@ function AssignmentCard({
           today={today}
         />
       ) : null}
+      <CommentLines comments={comments} entries={entries} items={items} />
       {cadence === 'plan' ? (
         <Missed
           assignmentId={assignment.id}

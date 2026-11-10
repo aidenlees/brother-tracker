@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { FollowupRules } from './definition'
-import { defaultDue, dueLabel, listsAllOpen, retryChanges, retryLabels } from './followups'
+import {
+  defaultDue,
+  dueLabel,
+  listsAllOpen,
+  retryChanges,
+  retryLabels,
+  retryStatus,
+} from './followups'
 
 const rules: FollowupRules = {
   from: 'struggled',
@@ -52,5 +59,22 @@ describe('followup rules', () => {
     expect(dueLabel('2026-11-11', '2026-11-10')).toBe('due tomorrow')
     expect(dueLabel('2026-11-09', '2026-11-10')).toBe('due yesterday')
     expect(dueLabel('2026-11-05', '2026-11-10')).toBe('due Thu, Nov 5')
+  })
+})
+
+describe('retryStatus', () => {
+  const today = '2026-11-10'
+  it('says when an open retry is due, or since when it has been overdue', () => {
+    expect(retryStatus({ due_date: '2026-11-10', status: 'open' }, today)).toBe('Retry due today')
+    expect(retryStatus({ due_date: '2026-11-12', status: 'open' }, today)).toBe(
+      'Retry due Thu, Nov 12',
+    )
+    expect(retryStatus({ due_date: '2026-11-08', status: 'open' }, today)).toBe(
+      'Retry overdue since Sun, Nov 8',
+    )
+  })
+  it('says a closed retry is done or dropped, whenever it was due', () => {
+    expect(retryStatus({ due_date: '2026-11-08', status: 'done' }, today)).toBe('Retry done')
+    expect(retryStatus({ due_date: '2026-11-12', status: 'dropped' }, today)).toBe('Retry dropped')
   })
 })

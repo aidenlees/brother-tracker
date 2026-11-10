@@ -1,7 +1,8 @@
 import { useId, useState, type CSSProperties } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { ClearLog } from '@/components/ClearLog'
 import { EmptyNote, Page } from '@/components/Page'
+import { StudentPicker } from '@/components/StudentPicker'
 import { useAuth } from '@/lib/auth-context'
 import {
   RECENT_DAYS,
@@ -30,7 +31,6 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 export function OverviewPage() {
   const students = useStudents()
   const [chosen, setChosen] = useState<string | null>(null)
-  const pickerId = useId()
   const recentId = useId()
   const today = useToday()
   const auth = useAuth()
@@ -70,27 +70,7 @@ export function OverviewPage() {
   }
   return (
     <Page title="Overview" lead="How each week went, and every log from the last two weeks.">
-      {list.length > 1 ? (
-        <label htmlFor={pickerId} className="flex flex-col gap-2 text-small text-muted-foreground">
-          Student
-          <select
-            id={pickerId}
-            value={student.id}
-            onChange={(e) => {
-              setChosen(e.target.value)
-            }}
-            className="h-11 max-w-sm rounded-md border border-input bg-card px-3 text-body text-foreground"
-          >
-            {list.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <p className="text-body text-foreground">{student.name}</p>
-      )}
+      <StudentPicker students={list} value={student} onChange={setChosen} />
       <WeekNumbers
         key={student.id}
         student={student}
@@ -242,6 +222,17 @@ function LogCard({ log, onClear }: { log: LoggedEntry; onClear: (() => Promise<v
           This version of the app can’t show this tracker’s answers.
         </p>
       )}
+      {log.struggled ? (
+        <Link
+          to={`/struggles?student=${log.studentId}#entry-${log.id}`}
+          className="self-start text-small text-foreground underline underline-offset-4 hover:text-muted-foreground"
+        >
+          {log.comments === 0
+            ? 'Add a comment'
+            : `${String(log.comments)} ${log.comments === 1 ? 'comment' : 'comments'}`}
+          <span className="sr-only"> on Struggles</span>
+        </Link>
+      ) : null}
       {onClear ? (
         <ClearLog
           retries={log.retries}
