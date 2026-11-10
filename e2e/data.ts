@@ -75,6 +75,21 @@ export function longDay(iso: string): string {
   }).format(new Date(`${iso}T00:00:00Z`))
 }
 
+/** "Wed, Nov 4", as the app writes a date out short. */
+export function shortDay(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(`${iso}T00:00:00Z`))
+}
+
+/** Every comment on the LOCAL stack goes (the fixtures have none; specs add their own). */
+export function clearComments(): void {
+  localSql('delete from public.comments')
+}
+
 /** A tracker's current field_version: new entries must use it (a fresh seed starts at 1). */
 export async function fieldVersion(client: SupabaseClient, slug: string): Promise<number> {
   const { data, error } = await client

@@ -11,6 +11,7 @@ import {
   OverviewPage,
   PlanPage,
   SessionPage,
+  StrugglesPage,
   TasksPage,
   TodayPage,
   WeekPage,
@@ -25,6 +26,7 @@ const BUILT: Partial<Record<string, ReactNode>> = {
   plan: <PlanPage />,
   tasks: <TasksPage />,
   overview: <OverviewPage />,
+  struggles: <StrugglesPage />,
 }
 
 export const router = createBrowserRouter(

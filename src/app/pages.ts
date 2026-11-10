@@ -22,3 +22,6 @@ export const WeekPage = lazy(() => import('./week/WeekPage').then((m) => ({ defa
 export const SessionPage = lazy(() =>
   import('./session/SessionPage').then((m) => ({ default: m.SessionPage })),
 )
+export const StrugglesPage = lazy(() =>
+  import('./struggles/StrugglesPage').then((m) => ({ default: m.StrugglesPage })),
+)

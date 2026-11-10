@@ -74,3 +74,12 @@ export function dueLabel(due: string, today: string): string {
   if (days === -1) return 'due yesterday'
   return `due ${formatDay(due)}`
 }
+
+/** Where a retry stands, for Struggles: "Retry due tomorrow", "Retry overdue since Mon, Nov 9", "Retry done". */
+export function retryStatus(retry: { due_date: string; status: Status }, today: string): string {
+  if (retry.status === 'done') return 'Retry done'
+  if (retry.status === 'dropped') return 'Retry dropped'
+  return retry.due_date < today
+    ? `Retry overdue since ${formatDay(retry.due_date)}`
+    : `Retry ${dueLabel(retry.due_date, today)}`
+}

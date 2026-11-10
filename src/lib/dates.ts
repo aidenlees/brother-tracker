@@ -70,3 +70,15 @@ export function weekRange(sunday: string): string {
     ? `${month(sunday)} ${day(sunday)} – ${day(saturday)}`
     : `${month(sunday)} ${day(sunday)} – ${month(saturday)} ${day(saturday)}`
 }
+
+/** When something happened, in New York: "Mon, Nov 9, 8:15 PM". For a comment's time. */
+export function formatMoment(timestamp: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(timestamp))
+}

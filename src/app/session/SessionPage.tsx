@@ -2,8 +2,10 @@ import { ArrowLeft, ArrowRight } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
 import { PageGrid } from '@/components/BookPages'
+import { Thread } from '@/components/Comments'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
+import { useEntryComments } from '@/lib/comments'
 import { formatDay } from '@/lib/dates'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import { isEditable } from '@/lib/outbox/overlay'
@@ -25,6 +27,8 @@ export function SessionPage() {
   const today = useToday()
   const data = useStudentData()
   const drafts = useDrafts(useOutbox().userId)
+  const entry = data.entries.find((e) => e.plan_item_id === planItemId)
+  const comments = useEntryComments(entry?.id)
 
   if (data.status === 'loading') {
     return (
@@ -51,7 +55,6 @@ export function SessionPage() {
     )
   }
 
-  const entry = data.entries.find((e) => e.plan_item_id === item.id)
   const inProgress = drafts.some((d) => d.planItemId === item.id)
   const href = logPath(assignment.id, { planItemId: item.id })
   const problems = Array.isArray(item.details.problems)
@@ -115,6 +118,10 @@ export function SessionPage() {
             </Link>
           </Button>
         )}
+
+        {entry && comments.data && comments.data.length > 0 ? (
+          <Thread entryId={entry.id} comments={comments.data} heading="h2" prompt="Reply" />
+        ) : null}
 
         {problems.length > 0 ? (
           <section aria-labelledby="problems" className="flex flex-col gap-2">

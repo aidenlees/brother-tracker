@@ -22,6 +22,8 @@ export type LoggedEntry = {
   studentId: string
   date: string
   data: Record<string, unknown>
+  /** What the student struggled with, as the database copies it; null for none. */
+  struggled: string | null
   created_at: string
   /** Null when this version of the app can't read the tracker's definition. */
   tracker: Tracker | null
@@ -65,7 +67,7 @@ export function useRecentLogs(studentId: string | undefined, today: string) {
       const { data, error } = await supabase
         .from('entries')
         .select(
-          'id, date, data, created_at, owner_id, ' +
+          'id, date, data, struggled, created_at, owner_id, ' +
             'assignment:assignments!inner(tracker:trackers!inner(id, slug, name, icon, color, cadence, field_version, fields, metrics, followups, display, sort, archived)), ' +
             'plan:plan_items(id, assignment_id, date, title, details, sort), ' +
             'followups(count), comments(count)',
@@ -80,6 +82,7 @@ export function useRecentLogs(studentId: string | undefined, today: string) {
         studentId: row.owner_id,
         date: row.date,
         data: isRecord(row.data) ? row.data : {},
+        struggled: row.struggled || null,
         created_at: row.created_at,
         tracker: parseTracker(row.assignment.tracker),
         trackerName: row.assignment.tracker.name,
@@ -98,6 +101,7 @@ type RawLog = {
   owner_id: string
   date: string
   data: unknown
+  struggled: string | null
   created_at: string
   assignment: { tracker: { name: string } & Record<string, unknown> }
   plan: (Omit<PlanItem, 'details'> & { details: unknown }) | null
