@@ -3,6 +3,7 @@ import { ACCOUNTS, authFile, PASSWORD, ROLES, signIn } from './accounts'
 import {
   addDays,
   assignmentId,
+  clearComments,
   clearEntries,
   planItemId,
   resetTasks,
@@ -23,6 +24,30 @@ const VIEWPORTS = [
 const THEMES = ['light', 'dark'] as const
 
 const heading = (page: Page) => page.getByRole('heading', { level: 2 })
+
+/** Someone comments on a student's logged session (and, given a reply, the student answers). */
+async function converse(
+  from: string,
+  student: string,
+  session: number,
+  body: string,
+  reply?: string,
+): Promise<void> {
+  const owner = await signedInClient(student)
+  const { data, error } = await owner
+    .from('entries')
+    .select('id')
+    .eq('plan_item_id', await planItemId(owner, 'singapore-math', session))
+    .single()
+  if (error) throw error
+  const author = await signedInClient(from)
+  const first = await author.from('comments').insert({ entry_id: data.id, body })
+  if (first.error) throw first.error
+  if (reply) {
+    const second = await owner.from('comments').insert({ entry_id: data.id, body: reply })
+    if (second.error) throw second.error
+  }
+}
 
 for (const viewport of VIEWPORTS) {
   for (const theme of THEMES) {
@@ -116,6 +141,23 @@ for (const viewport of VIEWPORTS) {
           await settled(page)
           await shot(page, 'overview-week')
         })
+
+        test('Struggles, with a conversation', async ({ page }) => {
+          clearComments()
+          await converse(
+            ACCOUNTS.admin.email,
+            'student2@example.test',
+            12,
+            'Both of these are about the remainder. Try drawing the bar model before you divide.',
+            'Okay. The bar model made #11 make sense.',
+          )
+          await page.goto('struggles')
+          await page.getByLabel('Student').selectOption({ label: 'Riley' })
+          await expect(page.getByText('The bar model made #11 make sense.')).toBeVisible()
+          await settled(page)
+          await shot(page, 'struggles')
+          clearComments()
+        })
       })
 
       test.describe('student', () => {
@@ -157,6 +199,26 @@ for (const viewport of VIEWPORTS) {
           await expect(page.getByRole('button', { name: 'Keep it' })).toBeFocused()
           await shot(page, 'log-clear')
           await clearEntries(client, 'singapore-math', todayNY())
+        })
+
+        test('a comment on Today, and the conversation on its session', async ({ page }) => {
+          clearComments()
+          await converse(
+            ACCOUNTS.viewer.email,
+            ACCOUNTS.student.email,
+            4,
+            'You stuck with p. 30 #2 until it worked. Show me how you did it tonight?',
+          )
+          await page.goto('today')
+          const line = page.getByRole('link', { name: /^Jordan commented on Session 4/ })
+          await expect(line).toBeVisible()
+          await settled(page)
+          await shot(page, 'today-comment')
+          await line.click()
+          await expect(page.getByRole('textbox', { name: 'Reply' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'session-comments')
+          clearComments()
         })
 
         test('My week, and a session with its pages', async ({ page }) => {
