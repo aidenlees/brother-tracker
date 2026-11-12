@@ -116,6 +116,13 @@ for (const viewport of VIEWPORTS) {
           await page.getByRole('button', { name: /^Edit .*Session 8 · Working Backward$/ }).click()
           await expect(page.getByRole('form', { name: /^Edit / })).toBeVisible()
           await shot(page, 'plan-edit')
+          await page.getByRole('button', { name: 'Add sessions' }).click()
+          await page.getByText('Paste a list', { exact: true }).click()
+          await expect(page.getByRole('form', { name: 'Add one session' })).toBeVisible()
+          await page.getByRole('form', { name: 'Add one session' }).scrollIntoViewIfNeeded()
+          await page.screenshot({
+            path: `test-results/screens/plan-add-${viewport.name}-${theme}.png`,
+          })
         })
 
         test('a log in Overview, about to be cleared', async ({ page }) => {
