@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Check, Pencil, RotateCcw } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useId, useMemo, useState, type CSSProperties } from 'react'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,7 @@ import {
 } from '@/trackers/plan-edit'
 import { weekStart } from '@/trackers/schedule'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
+import { AddSessions } from './AddSessions'
 
 const KINDS = ['study', 'practice', 'review', 'mixed_check'] as const
 const KIND_LABEL: Record<(typeof KINDS)[number], string> = {
@@ -73,7 +74,10 @@ export function PlanPage() {
     )
   }
   return (
-    <Page title="Plan" lead="Each session, by week. Edit one, or move it and the rest later.">
+    <Page
+      title="Plan"
+      lead="Each session, by week. Edit one, move it and the rest later, add sessions or delete one."
+    >
       {list.length > 1 ? (
         <label htmlFor={pickerId} className="flex flex-col gap-2 text-small text-muted-foreground">
           Student and tracker
@@ -107,9 +111,11 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
   const sessions = usePlanSessions(assignment.id)
   const logged = useLoggedSessions(assignment.id)
   const template = useTemplate(assignment.plan_template_id)
-  const { save, move } = usePlanEdits(assignment.id)
+  const { save, move, remove } = usePlanEdits(assignment.id)
   const [editing, setEditing] = useState<string | null>(null)
   const [showEarlier, setShowEarlier] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; undo?: Move[] } | null>(null)
   // The book's problems by page, from the baseline's sessions that work pages (a mixed
   // check's named problems would add a whole problem beside its parts).
@@ -226,6 +232,34 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
 
       <DayOff today={today} busy={move.isPending} onDayOff={dayOff} />
 
+      {items.length === 0 || adding ? (
+        <AddSessions
+          assignmentId={assignment.id}
+          items={items}
+          today={today}
+          onAdded={(text) => {
+            // Keep it open: more sessions often follow the first.
+            setAdding(true)
+            setNotice({ text })
+          }}
+        />
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={() => {
+            setAdding(true)
+          }}
+        >
+          <Plus aria-hidden />
+          Add sessions
+        </Button>
+      )}
+      {items.length === 0 ? (
+        <p className="text-muted-foreground">No sessions yet. Add one, or paste a list.</p>
+      ) : null}
+
       {earlier.length > 0 ? (
         <Button
           variant="outline"
@@ -269,7 +303,57 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
                   onEarlier={() => {
                     shift(item, -1)
                   }}
+                  onDelete={
+                    logged.data?.has(item.id)
+                      ? undefined
+                      : () => {
+                          setDeleting(deleting === item.id ? null : item.id)
+                        }
+                  }
                 />
+                {deleting === item.id ? (
+                  <div
+                    role="group"
+                    aria-label={`Delete ${sessionLabel(item.details) ?? item.title}`}
+                    className="mb-3 flex flex-col gap-3 border-l-2 border-destructive py-1 pl-4"
+                  >
+                    <p className="text-foreground">
+                      Delete {sessionLabel(item.details) ?? item.title} on{' '}
+                      {formatDay(item.date, 'long')}? The sessions after it keep their days.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        disabled={remove.isPending}
+                        onClick={() => {
+                          remove.mutate(item.id, {
+                            onSuccess: () => {
+                              setDeleting(null)
+                              setNotice({ text: `Deleted ${formatDay(item.date, 'long')}.` })
+                            },
+                            onError: (error) => {
+                              setDeleting(null)
+                              setNotice({ text: error.message })
+                            },
+                          })
+                        }}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        autoFocus
+                        onClick={() => {
+                          setDeleting(null)
+                        }}
+                      >
+                        Keep it
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 {editing === item.id ? (
                   <SessionForm
                     item={item}
@@ -314,6 +398,7 @@ function SessionRow({
   onEdit,
   onLater,
   onEarlier,
+  onDelete,
 }: {
   item: PlanItem
   /** "About 45 min", once the baseline's problems are here. */
@@ -324,6 +409,8 @@ function SessionRow({
   onEdit: () => void
   onLater: () => void
   onEarlier: () => void
+  /** Only a session nothing is logged against can be deleted. */
+  onDelete?: () => void
 }) {
   const problems = Array.isArray(item.details.problems) ? item.details.problems.length : 0
   // Each part stays whole when the line wraps ("About 45 min" never splits).
@@ -385,6 +472,12 @@ function SessionRow({
           <ArrowUp aria-hidden />
           Earlier
         </Button>
+        {onDelete ? (
+          <Button variant="ghost" size="sm" onClick={onDelete} aria-label={`Delete ${name}`}>
+            <Trash2 aria-hidden />
+            Delete
+          </Button>
+        ) : null}
       </span>
     </div>
   )
