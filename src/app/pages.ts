@@ -25,3 +25,6 @@ export const SessionPage = lazy(() =>
 export const StrugglesPage = lazy(() =>
   import('./struggles/StrugglesPage').then((m) => ({ default: m.StrugglesPage })),
 )
+export const RetriesPage = lazy(() =>
+  import('./retries/RetriesPage').then((m) => ({ default: m.RetriesPage })),
+)
