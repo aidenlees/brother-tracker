@@ -2,6 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
+import { SHEETS_GAP } from '@/components/sheet'
 import { Button } from '@/components/ui/button'
 import { useAppUpdate } from '@/lib/app-update'
 import { useRecentComments, type Comment } from '@/lib/comments'
@@ -12,6 +13,7 @@ import type { Draft } from '@/lib/outbox/types'
 import { useDrafts } from '@/lib/outbox/use-drafts'
 import { useStudentData, type Assignment, type StudentData } from '@/lib/student-data'
 import { useToday } from '@/lib/use-today'
+import { cn } from '@/lib/utils'
 import { streak } from '@/trackers/metrics/streak'
 import { missedItems } from '@/trackers/plan'
 import { taskDay } from '@/trackers/tasks'
@@ -47,7 +49,7 @@ export function TodayPage() {
       ) : data.assignments.length === 0 ? (
         <EmptyNote>Your trackers will show up here once your admin assigns them.</EmptyNote>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className={cn('flex flex-col', SHEETS_GAP)}>
           {state?.cleared ? (
             <p role="status" className="text-small text-muted-foreground">
               Log cleared.

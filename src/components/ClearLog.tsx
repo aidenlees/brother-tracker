@@ -59,7 +59,7 @@ export function ClearLog({
       data-flow-nav
       role="group"
       aria-labelledby={questionId}
-      className="flex max-w-prose flex-col gap-3 rounded-lg border border-border bg-card p-4"
+      className="flex max-w-prose flex-col gap-3 border-l-2 border-destructive py-1 pl-4"
       onKeyDown={(e) => {
         if (e.key === 'Escape') setAsking(false)
       }}

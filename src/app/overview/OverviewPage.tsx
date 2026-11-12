@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { ClearLog } from '@/components/ClearLog'
 import { EmptyNote, Page } from '@/components/Page'
 import { StudentPicker } from '@/components/StudentPicker'
+import { leaf, sheet } from '@/components/sheet'
 import { useAuth } from '@/lib/auth-context'
 import {
   RECENT_DAYS,
@@ -80,7 +81,7 @@ export function OverviewPage() {
         isAdmin={isAdmin}
         weekLink={weekLink}
       />
-      <section aria-labelledby={recentId} className="flex flex-col gap-4">
+      <section aria-labelledby={recentId} className={sheet()}>
         <div className="flex flex-col gap-1">
           <h2 id={recentId} className="font-heading text-title text-foreground">
             Recent logs
@@ -134,7 +135,7 @@ function Logs({ student, today, isAdmin }: { student: Student; today: string; is
             <h3 className="text-body font-medium text-foreground">
               {day === today ? `Today · ${formatDay(day, 'long')}` : formatDay(day, 'long')}
             </h3>
-            <ul className="flex flex-col gap-4">
+            <ul className="flex flex-col gap-6">
               {logs.data
                 .filter((log) => log.date === day)
                 .map((log) => (
@@ -184,7 +185,7 @@ function LogCard({ log, onClear }: { log: LoggedEntry; onClear: (() => Promise<v
       style={
         tracker ? ({ '--tracker': `var(--tracker-${tracker.color})` } as CSSProperties) : undefined
       }
-      className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 sm:p-6"
+      className={leaf()}
     >
       <header className="flex flex-col gap-1">
         <h4

@@ -18,7 +18,7 @@ Four rules decide every call. When two conflict, the earlier one wins.
    - Defaults over options: add a setting only when a second person needs a different value.
    - No points, badges, confetti or mascots.
 3. **Aesthetic.**
-   - Calm and adult ("studio notebook").
+   - Calm and adult: a practice notebook (squared paper, a margin line, ruled sections).
    - Polish goes where hands touch.
    - One design system, defined once in tokens.
 4. **Modifiable.** Anything that might change is **data, not code**:
@@ -279,23 +279,24 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 | Export | admin | CSV / .xlsx per tracker and person; math uses the original sheet's columns |
 | Settings | all | Theme (System, Light or Dark, saved on this device and applied before the page draws). For the admin, two-step sign-in: turn on by scanning a QR code (or typing the key) into an authenticator app and confirming a code; turn off with a code; a lost phone is cleared in the Supabase dashboard. Reminder time comes with push reminders (not built). |
 
-Navigation shows only the screens a role can use.
+Navigation shows only the screens a role can use, and only those built (an unbuilt screen keeps its address and says so). On a phone, a role with more than four screens sees the current one and a Menu.
 
 ## Design rules ("studio notebook")
 
 - **Tokens.** Everything visual comes from `src/theme/tokens.css`, as CSS variables for both themes. Components never hard-code colours, fonts, sizes or radii (`pnpm check:tokens`).
 - **Palette.**
-  - Warm paper background (`#FAF7F2`-ish), ink text (`#1F2328`-ish).
+  - Squared-paper background (`#F2F4EE`: cool and faintly green, never cream), blue-black ink (`#1B2230`). Dark mode is a blackboard (`#161B19`, chalk `#E3E7DF`), not near-black.
+  - A notebook margin line (`--margin`) runs down the left of the column, behind everything. Decorative only.
   - One accent per tracker: math ink blue, violin rosin amber. New trackers pick from 6 accents that pass AA in both themes.
   - Real dark mode, not inversion.
-- **Type.** Fraunces (`font-heading`) only for the page title, a tracker's name, the question on a log step, dialog titles and the wordmark. Inter for everything else; tabular numerals on stats.
+- **Type.** Literata (`font-heading`, a book face with optical sizes) only for the page title, a tracker's name, the question on a log step, dialog titles and the wordmark. Atkinson Hyperlegible Next for everything else (distinct 0/O and 1/l/I, which page and problem numbers need); tabular numerals on stats. Both self-hosted, so they work offline.
   - Six sizes, each with one job: `text-display` (page title, log question), `text-title` (tracker name), `text-lead` (a card's main line), `text-body` (answers, rows, a card's section headings), `text-small` (details under a line, labels, hints), `text-caption` (the 7-day strip). A new size goes in tokens.css and in `TYPE_SIZES` (`src/lib/utils.ts`, so `cn()` keeps it); a test checks they match.
   - Weights 400 and 500 only. Sentence case; no all-caps labels.
 - **Layout.** One 42rem column for the header and the content, at every width. Spacing comes from 4/8/12/16/24/32/48 px: 24 inside a card and between its sections, 32 from a page's heading to its content, 16 between cards.
 - **Feel.**
-  - Generous space, rounded-lg cards, hairline borders; no heavy shadows or gradients.
+  - A ruled page, not a stack of boxes (`src/components/sheet.ts`): a section starts on a 2 px rule (a tracker's in its accent, otherwise ink); items in a list sit on hairlines, like a ledger; a note (a confirmation, an empty list) has an ink bar down its left. Boxes only for what floats (dialogs, menus, the page viewer). No shadows, gradients or textures.
   - A soft press on each tally, a small check mark on save.
-  - No gamification. Consistency is shown, not rewarded: the last 7 days on every Today card (done, still to log, rest day), the streak as a plain sentence ("4 days in a row. Today makes 5."), and what's next once today is saved. Missed sessions are a to-do folded under one line, never "behind".
+  - No gamification. Consistency is shown, not rewarded: the last 7 days on every Today card as a practice record (seven joined boxes: a tick for done, an empty box still to log, a dot for a rest day), the streak as a plain sentence ("4 days in a row. Today makes 5."), and what's next once today is saved. Missed sessions are a to-do folded under one line, never "behind".
 - **Charts.** Quiet gridlines, direct labels, one highlighted series. A null is a gap. Every chart gets a text summary for screen readers.
 - **Access.** AA contrast, full keyboard use, visible focus, `prefers-reduced-motion` respected.
 - **Copy.** Short, second person, specific ("Your table made the pattern clear"), never generic praise.
@@ -332,7 +333,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview (with the weekly numbers), My week, Struggles, comments, retry queue, plan editor, tasks, the nightly backup.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags; then Struggles and comments; then the Retry queue; then Settings (theme, two-step sign-in).
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags; then Struggles and comments; then the Retry queue; then Settings (theme, two-step sign-in); then the look (a ruled notebook page, new type and palette) and the phone menu.
   - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.

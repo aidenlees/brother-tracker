@@ -61,7 +61,7 @@ export function WeekPage() {
       ) : data.assignments.length === 0 ? (
         <EmptyNote>Your plan will show up here once your admin assigns your trackers.</EmptyNote>
       ) : (
-        <ol className="flex flex-col rounded-lg border border-border bg-card">
+        <ol className="flex flex-col border-t border-foreground">
           {weekDates(sunday).map((date) => {
             const rows = data.assignments.flatMap((assignment) => {
               const tracker = assignment.tracker
@@ -86,7 +86,7 @@ export function WeekPage() {
               <li
                 key={date}
                 aria-current={date === today ? 'date' : undefined}
-                className="flex flex-col gap-3 border-b border-border p-5 last:border-b-0 sm:px-6"
+                className="flex flex-col gap-3 border-b border-border py-5"
               >
                 <h2 className="flex items-baseline justify-between gap-3 text-body text-foreground">
                   <span>{formatDay(date, 'long')}</span>

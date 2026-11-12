@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Role } from '@/lib/supabase'
-import { canUse, homeFor, navFor } from './nav'
+import { canUse, homeFor, navFor, SCREENS } from './nav'
 
 const labels = (role: Role) => navFor(role).map((s) => s.label)
 
@@ -13,18 +13,24 @@ describe('navigation', () => {
     expect(labels('viewer')).toEqual(['Overview', 'Struggles', 'Settings'])
   })
 
-  it('shows the admin every admin screen', () => {
+  it('shows the admin every admin screen built so far', () => {
     expect(labels('admin')).toEqual([
       'Overview',
       'Struggles',
       'Retry queue',
       'Plan',
       'Tasks',
+      'Settings',
+    ])
+  })
+
+  it('keeps an unbuilt screen out of the nav, but still at its address', () => {
+    expect(SCREENS.filter((s) => !s.built).map((s) => s.label)).toEqual([
       'Trackers',
       'People',
       'Export',
-      'Settings',
     ])
+    expect(canUse('admin', 'people')).toBe(true)
   })
 
   it('keeps pacing and admin screens away from students', () => {

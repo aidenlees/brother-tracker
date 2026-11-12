@@ -16,17 +16,7 @@ export const ACCOUNTS = {
     name: 'Alex',
     landing: 'Overview',
     path: /\/overview$/,
-    nav: [
-      'Overview',
-      'Struggles',
-      'Retry queue',
-      'Plan',
-      'Tasks',
-      'Trackers',
-      'People',
-      'Export',
-      'Settings',
-    ],
+    nav: ['Overview', 'Struggles', 'Retry queue', 'Plan', 'Tasks', 'Settings'],
   },
   viewer: {
     email: 'viewer@example.test',

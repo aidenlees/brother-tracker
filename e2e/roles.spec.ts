@@ -53,3 +53,44 @@ test.describe('deep links', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
   })
 })
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test.describe('the admin', () => {
+    test.use({ storageState: authFile('admin') })
+
+    test('folds the screens into a menu that closes once one is chosen', async ({ page }) => {
+      await page.goto('overview')
+      const nav = page.getByRole('navigation', { name: 'Main' })
+      const menu = nav.getByRole('button', { name: 'Menu' })
+      await expect(menu).toHaveAttribute('aria-expanded', 'false')
+      await expect(nav.getByRole('link', { name: 'Tasks' })).toBeHidden()
+      await menu.click()
+      await expect(menu).toHaveAttribute('aria-expanded', 'true')
+      await expect(nav.getByRole('link')).toHaveText([...ACCOUNTS.admin.nav])
+      const results = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+        .analyze()
+      expect(results.violations).toEqual([])
+      await nav.getByRole('link', { name: 'Tasks' }).click()
+      await expect(page.getByRole('heading', { level: 1, name: 'Tasks' })).toBeVisible()
+      await expect(menu).toHaveAttribute('aria-expanded', 'false')
+      // Escape closes it too.
+      await menu.click()
+      await page.keyboard.press('Escape')
+      await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    })
+  })
+
+  test.describe('a student', () => {
+    test.use({ storageState: authFile('student') })
+
+    test('keeps the tabs: three screens fit', async ({ page }) => {
+      await page.goto('today')
+      const nav = page.getByRole('navigation', { name: 'Main' })
+      await expect(nav.getByRole('button', { name: 'Menu' })).toHaveCount(0)
+      await expect(nav.getByRole('link')).toHaveText([...ACCOUNTS.student.nav])
+    })
+  })
+})

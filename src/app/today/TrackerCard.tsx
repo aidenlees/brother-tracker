@@ -1,6 +1,7 @@
 import { Check, TriangleAlert } from 'lucide-react'
 import { useId, type CSSProperties, type ReactNode } from 'react'
 import type { Sync } from '@/lib/outbox/overlay'
+import { sheet } from '@/components/sheet'
 import { cn } from '@/lib/utils'
 import type { TrackerAccent } from '@/theme/accents'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
@@ -22,7 +23,7 @@ export function TrackerCard({
     <section
       aria-labelledby={headingId}
       style={{ '--tracker': `var(--tracker-${color})` } as CSSProperties}
-      className="flex flex-col gap-6 rounded-lg border border-border bg-card p-5 sm:p-6"
+      className={sheet(true)}
     >
       <header className="flex items-center gap-3">
         <TrackerIcon name={icon} className="size-5 shrink-0 text-tracker" />

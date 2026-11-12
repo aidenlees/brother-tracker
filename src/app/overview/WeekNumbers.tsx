@@ -3,6 +3,7 @@ import { useId, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { EmptyNote } from '@/components/Page'
 import { Button } from '@/components/ui/button'
+import { leaf, sheet } from '@/components/sheet'
 import type { Student } from '@/lib/admin-logs'
 import { addDays, formatDay, weekRange } from '@/lib/dates'
 import { useStudentNumbers, type StudentTracker } from '@/lib/overview-numbers'
@@ -57,7 +58,7 @@ export function WeekNumbers({
       cards.length === 0 ? (
         <EmptyNote>{student.name}’s trackers have no numbers to show.</EmptyNote>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-6">
           {cards.map((card) => (
             <li key={card.assignmentId}>
               <TrackerWeek card={card} />
@@ -68,7 +69,7 @@ export function WeekNumbers({
   }
 
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-4">
+    <section aria-labelledby={headingId} className={sheet()}>
       <div className="flex flex-col gap-3">
         <h2 id={headingId} className="font-heading text-title text-foreground">
           {sunday === thisWeek ? `This week · ${range}` : `Week of ${range}`}
@@ -220,7 +221,7 @@ function TrackerWeek({ card }: { card: Card }) {
       style={
         card.color ? ({ '--tracker': `var(--tracker-${card.color})` } as CSSProperties) : undefined
       }
-      className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5 sm:p-6"
+      className={leaf()}
     >
       <h3 id={headingId} className="flex items-center gap-2 text-body font-medium text-foreground">
         {card.icon ? (

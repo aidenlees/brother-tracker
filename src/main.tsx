@@ -1,6 +1,7 @@
-// Weight and optical-size axes: large headings get Fraunces' display cut.
-import '@fontsource-variable/fraunces/opsz.css'
-import '@fontsource-variable/inter'
+// Literata with its optical-size axis: large headings get its display cut. Atkinson
+// Hyperlegible Next, upright only (the app sets no italics).
+import '@fontsource-variable/literata/opsz.css'
+import '@fontsource-variable/atkinson-hyperlegible-next/wght.css'
 import './index.css'
 
 import { StrictMode } from 'react'

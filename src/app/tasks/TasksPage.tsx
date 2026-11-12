@@ -2,6 +2,7 @@ import { Check, Repeat as RepeatIcon } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
+import { sheet } from '@/components/sheet'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useStudents, type Student } from '@/lib/admin-logs'
@@ -186,7 +187,7 @@ function AddTask({
         e.preventDefault()
         void submit()
       }}
-      className="flex flex-col gap-5 rounded-lg border border-border bg-card p-5 sm:p-6"
+      className={sheet(false, 'gap-5')}
     >
       <h2 id={`${id}-heading`} className="font-heading text-title text-foreground">
         Add a task
@@ -388,7 +389,7 @@ function TaskList({ tracker, student }: { tracker: TaskTracker; student: Student
           <h3 className="text-body font-medium text-foreground">
             {day === today ? `Today · ${formatDay(day, 'long')}` : formatDay(day, 'long')}
           </h3>
-          <ul className="flex flex-col rounded-lg border border-border bg-card">
+          <ul className="flex flex-col border-t border-foreground">
             {coming.filter((t) => t.date === day).map(row)}
           </ul>
         </section>
@@ -398,9 +399,7 @@ function TaskList({ tracker, student }: { tracker: TaskTracker; student: Student
           <summary className="cursor-pointer text-body font-medium text-foreground">
             Earlier ({earlier.length})
           </summary>
-          <ul className="mt-2 flex flex-col rounded-lg border border-border bg-card">
-            {earlier.map(row)}
-          </ul>
+          <ul className="mt-2 flex flex-col border-t border-foreground">{earlier.map(row)}</ul>
         </details>
       ) : null}
     </div>
@@ -457,7 +456,7 @@ function TaskItem({
   ) : null
 
   return (
-    <li className="flex flex-col gap-3 border-b border-border p-4 last:border-b-0 sm:px-5">
+    <li className="flex flex-col gap-3 border-b border-border py-4">
       {mode === 'edit' ? (
         <EditTask
           task={task}

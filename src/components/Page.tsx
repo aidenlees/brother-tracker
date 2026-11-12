@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { note } from './sheet'
 
 const APP_NAME = 'Practice tracker'
 
@@ -35,9 +36,5 @@ export function Page({
 
 /** A quiet note for a screen with nothing in it yet. */
 export function EmptyNote({ children }: { children: ReactNode }) {
-  return (
-    <p className="max-w-prose rounded-lg border border-border bg-card px-5 py-4 text-foreground">
-      {children}
-    </p>
-  )
+  return <p className={note('max-w-prose')}>{children}</p>
 }

@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router'
 import { Thread } from '@/components/Comments'
 import { EmptyNote, Page } from '@/components/Page'
 import { StudentPicker } from '@/components/StudentPicker'
+import { leaf } from '@/components/sheet'
 import { Button } from '@/components/ui/button'
 import { useStudents, type Student } from '@/lib/admin-logs'
 import { formatDay } from '@/lib/dates'
@@ -145,7 +146,7 @@ function List({
     )
   }
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className="flex flex-col gap-8">
       {shown.map((struggle) => (
         <li key={struggle.id}>
           <StruggleCard struggle={struggle} today={today} />
@@ -172,7 +173,7 @@ function StruggleCard({ struggle, today }: { struggle: Struggle; today: string }
       style={
         tracker ? ({ '--tracker': `var(--tracker-${tracker.color})` } as CSSProperties) : undefined
       }
-      className="flex scroll-mt-6 flex-col gap-6 rounded-lg border border-border bg-card p-5 sm:p-6"
+      className={leaf('scroll-mt-6 gap-6')}
     >
       <header className="flex flex-col gap-1">
         <h2

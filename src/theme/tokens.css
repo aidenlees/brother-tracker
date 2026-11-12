@@ -15,15 +15,17 @@
   color-scheme: light dark;
 
   /* Palette */
-  --paper: light-dark(#faf7f2, #1a1916);
-  --surface: light-dark(#fffdf9, #23221e);
-  --muted-fill: light-dark(#f1ece3, #2c2a25);
-  --ink: light-dark(#1f2328, #ece7df);
-  --ink-muted: light-dark(#5a5f67, #aba59b);
-  --hairline: light-dark(#e4ded3, #3a3832);
-  --field-border: light-dark(#8a857c, #7d786f);
-  --focus: light-dark(#2c5aa0, #8fb3f0);
-  --danger: light-dark(#a8321f, #f2a08e);
+  --paper: light-dark(#f2f4ee, #161b19);
+  --surface: light-dark(#fafbf7, #1d2421);
+  --muted-fill: light-dark(#e4e8df, #262e2a);
+  --ink: light-dark(#1b2230, #e3e7df);
+  --ink-muted: light-dark(#525b66, #a0a9a1);
+  --hairline: light-dark(#d3d9cc, #313a35);
+  /* The notebook's margin line, down the left of the column. Decorative only. */
+  --margin: light-dark(#d7a39b, #6b4540);
+  --field-border: light-dark(#7a837a, #7d877f);
+  --focus: light-dark(#2d5ba6, #8fb3f0);
+  --danger: light-dark(#a3301e, #f2a08e);
   /* Behind a QR code: white in both themes, so a phone camera can read it. */
   --scan-paper: #ffffff;
 
@@ -39,8 +41,8 @@
   --tracker: var(--tracker-ink-blue);
 
   /* Type */
-  --type-heading: 'Fraunces Variable', Georgia, serif;
-  --type-ui: 'Inter Variable', system-ui, sans-serif;
+  --type-heading: 'Literata Variable', Georgia, serif;
+  --type-ui: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
 }
 
 :root[data-theme='light'] {
@@ -59,9 +61,10 @@
   --text-*: initial;
 
   /*
-   * Type: six sizes, each with one job. Fraunces (font-heading) only for the page title,
-   * a tracker's name, the question on a log step, dialog titles and the wordmark; Inter
-   * for everything else. Weights 400 and 500 only (check:tokens holds both lines).
+   * Type: six sizes, each with one job. Literata (font-heading) only for the page title,
+   * a tracker's name, the question on a log step, dialog titles and the wordmark;
+   * Atkinson Hyperlegible Next for everything else. Weights 400 and 500 only
+   * (check:tokens holds both lines).
    */
   --text-display: 2.25rem; /* the page title; the question a log step asks */
   --text-display--line-height: 1.15;
@@ -113,6 +116,7 @@
   --color-muted-foreground: var(--ink-muted);
   --color-destructive: var(--danger);
   --color-border: var(--hairline);
+  --color-margin: var(--margin);
   --color-input: var(--field-border);
   --color-ring: var(--focus);
   --color-scan-paper: var(--scan-paper);
