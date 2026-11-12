@@ -176,6 +176,14 @@ for (const viewport of VIEWPORTS) {
           forget()
         })
 
+        test('Export', async ({ page }) => {
+          await page.goto('export')
+          await page.getByLabel('Student').selectOption({ label: 'Riley' })
+          await expect(page.getByRole('list', { name: 'Tables' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'export')
+        })
+
         test('the Retry queue', async ({ page }) => {
           await page.goto('retries')
           await page.getByLabel('Student').selectOption({ label: 'Riley' })
