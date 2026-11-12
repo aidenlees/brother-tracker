@@ -24,6 +24,8 @@
   --field-border: light-dark(#8a857c, #7d786f);
   --focus: light-dark(#2c5aa0, #8fb3f0);
   --danger: light-dark(#a8321f, #f2a08e);
+  /* Behind a QR code: white in both themes, so a phone camera can read it. */
+  --scan-paper: #ffffff;
 
   /* Tracker accents: exactly six. A tracker's `color` names one of these. */
   --tracker-ink-blue: light-dark(#1f4e8c, #94b6f0);
@@ -113,6 +115,7 @@
   --color-border: var(--hairline);
   --color-input: var(--field-border);
   --color-ring: var(--focus);
+  --color-scan-paper: var(--scan-paper);
 
   --color-tracker-ink-blue: var(--tracker-ink-blue);
   --color-tracker-rosin-amber: var(--tracker-rosin-amber);
