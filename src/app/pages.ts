@@ -37,3 +37,6 @@ export const ExportPage = lazy(() =>
 export const PeoplePage = lazy(() =>
   import('./people/PeoplePage').then((m) => ({ default: m.PeoplePage })),
 )
+export const BuilderPage = lazy(() =>
+  import('./builder/BuilderPage').then((m) => ({ default: m.BuilderPage })),
+)

@@ -20,15 +20,15 @@ describe('navigation', () => {
       'Retry queue',
       'Plan',
       'Tasks',
+      'Trackers',
       'People',
       'Export',
       'Settings',
     ])
   })
 
-  it('keeps an unbuilt screen out of the nav, but still at its address', () => {
-    expect(SCREENS.filter((s) => !s.built).map((s) => s.label)).toEqual(['Trackers'])
-    expect(canUse('admin', 'builder')).toBe(true)
+  it('has every screen built (an unbuilt one would stay out of the nav)', () => {
+    expect(SCREENS.filter((s) => !s.built).map((s) => s.label)).toEqual([])
   })
 
   it('keeps pacing and admin screens away from students', () => {
