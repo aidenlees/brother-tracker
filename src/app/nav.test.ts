@@ -20,16 +20,13 @@ describe('navigation', () => {
       'Retry queue',
       'Plan',
       'Tasks',
+      'Export',
       'Settings',
     ])
   })
 
   it('keeps an unbuilt screen out of the nav, but still at its address', () => {
-    expect(SCREENS.filter((s) => !s.built).map((s) => s.label)).toEqual([
-      'Trackers',
-      'People',
-      'Export',
-    ])
+    expect(SCREENS.filter((s) => !s.built).map((s) => s.label)).toEqual(['Trackers', 'People'])
     expect(canUse('admin', 'people')).toBe(true)
   })
 

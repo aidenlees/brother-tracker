@@ -31,3 +31,6 @@ export const RetriesPage = lazy(() =>
 export const SettingsPage = lazy(() =>
   import('./settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 )
+export const ExportPage = lazy(() =>
+  import('./export/ExportPage').then((m) => ({ default: m.ExportPage })),
+)
