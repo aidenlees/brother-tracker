@@ -122,7 +122,7 @@ function PlanChecklist({
                       'flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border border-input',
                       'bg-card px-3 text-body text-foreground tabular-nums select-none',
                       'transition-[transform,background-color] duration-150 hover:bg-muted active:scale-[0.97]',
-                      'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground',
+                      'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:hover:bg-primary',
                       'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring',
                     )}
                   >
