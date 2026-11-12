@@ -47,8 +47,8 @@ test.describe('deep links', () => {
   test.use({ storageState: authFile('admin') })
 
   test('load directly and unknown paths say so', async ({ page }) => {
-    await page.goto('people')
-    await expect(page.getByRole('heading', { level: 1, name: 'People' })).toBeVisible()
+    await page.goto('builder')
+    await expect(page.getByRole('heading', { level: 1, name: 'Trackers' })).toBeVisible()
     await page.goto('no-such-page')
     await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
   })

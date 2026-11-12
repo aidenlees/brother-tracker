@@ -176,6 +176,13 @@ for (const viewport of VIEWPORTS) {
           forget()
         })
 
+        test('People', async ({ page }) => {
+          await page.goto('people')
+          await expect(page.getByRole('region', { name: 'Students' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'people')
+        })
+
         test('Export', async ({ page }) => {
           await page.goto('export')
           await page.getByLabel('Student').selectOption({ label: 'Riley' })
