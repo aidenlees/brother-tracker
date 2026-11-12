@@ -105,7 +105,7 @@ export function Segmented({
               'flex h-11 min-w-16 cursor-pointer items-center justify-center rounded-md border border-input',
               'bg-card px-5 text-body font-medium text-foreground transition-[transform,background-color]',
               'duration-150 select-none hover:bg-muted active:scale-[0.97]',
-              'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground',
+              'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:hover:bg-primary',
               'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring',
             )}
           >

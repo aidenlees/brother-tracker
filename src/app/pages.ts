@@ -28,3 +28,6 @@ export const StrugglesPage = lazy(() =>
 export const RetriesPage = lazy(() =>
   import('./retries/RetriesPage').then((m) => ({ default: m.RetriesPage })),
 )
+export const SettingsPage = lazy(() =>
+  import('./settings/SettingsPage').then((m) => ({ default: m.SettingsPage })),
+)

@@ -199,7 +199,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return notice ? { status: 'signed-out', notice } : { status: 'signed-out' }
     }
-    if (resolved?.identity !== identity) return provisional(session) ?? { status: 'loading' }
+    if (resolved?.identity !== identity) {
+      // The same person passing (or dropping) the code step: keep the screen while the
+      // new level is checked, rather than unmounting it to a loading state.
+      const before = resolved?.result
+      if (before?.kind === 'profile' && before.profile.id === session.user.id) {
+        return { status: 'signed-in', session, profile: before.profile, offline: before.offline }
+      }
+      return provisional(session) ?? { status: 'loading' }
+    }
     const result = resolved.result
     if (result.kind === 'needs-code') return { status: 'needs-code', session }
     if (result.kind === 'profile') {

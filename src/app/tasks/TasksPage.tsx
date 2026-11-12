@@ -339,7 +339,7 @@ function Toggle({
         className={cn(
           'flex h-10 min-w-12 cursor-pointer items-center justify-center rounded-md border border-input bg-card px-3',
           'text-small font-medium text-foreground select-none transition-colors hover:bg-muted',
-          'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground',
+          'peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-checked:hover:bg-primary',
           'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring',
         )}
       >

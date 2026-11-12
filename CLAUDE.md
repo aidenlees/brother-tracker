@@ -110,7 +110,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
 - Email + password. Accounts are created by the admin, never by sign-up.
 - **The app sends no auth email.** Build no sign-up, magic-link, OTP or "forgot password" flows. The login screen says "Forgot it? Ask your admin to reset it."
 - Sessions persist (refresh tokens), so a student logs in once per device.
-- The admin role supports TOTP MFA (enroll + challenge in Settings).
+- The admin role supports TOTP MFA: turned on and off in Settings; once on, each sign-in asks for the code, and admin writes need it (`aal2`).
 
 **Adding people**
 - **First setup:** the admin creates accounts in the Supabase dashboard and runs one SQL snippet with `profiles`, `viewer_links` and `assign_tracker` calls. It lives in the plan doc, not in this repo.
@@ -277,7 +277,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
 | People | admin | Add or disable accounts (via `admin-users`), set roles, link viewers to students, assign trackers with a start date |
 | Export | admin | CSV / .xlsx per tracker and person; math uses the original sheet's columns |
-| Settings | all | Theme, reminder time; MFA for admin |
+| Settings | all | Theme (System, Light or Dark, saved on this device and applied before the page draws). For the admin, two-step sign-in: turn on by scanning a QR code (or typing the key) into an authenticator app and confirming a code; turn off with a code; a lost phone is cleared in the Supabase dashboard. Reminder time comes with push reminders (not built). |
 
 Navigation shows only the screens a role can use.
 
@@ -332,7 +332,7 @@ Mark the current phase when it changes.
   - Closed on the automated student-pace test (math log 10.0 s, CI on 3c96e3a); the first real session (2026-11-08) confirms it.
 - [ ] **3. Admin side + connectors** ← current (branch `phase-3`)
   - Builds: Overview (with the weekly numbers), My week, Struggles, comments, retry queue, plan editor, tasks, the nightly backup.
-  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags; then Struggles and comments; then the Retry queue.
+  - Shipped first: My week, the session page with the book's pages, and the plan editor; then the six-day plan, early logs and the day off; then clearing a log (student within 7 days, admin any time) and Overview's recent logs; then tasks the admin adds; then the nightly backup; then Overview's weekly numbers and pacing flags; then Struggles and comments; then the Retry queue; then Settings (theme, two-step sign-in).
   - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.
