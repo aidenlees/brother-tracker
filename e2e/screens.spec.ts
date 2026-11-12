@@ -10,7 +10,7 @@ import {
   seedTasks,
   todayNY,
 } from './data'
-import { signedInClient } from './supabase'
+import { localSql, signedInClient } from './supabase'
 
 /**
  * Screenshots for review, not comparison (CLAUDE.md, "Look at what you build"): every
@@ -157,6 +157,23 @@ for (const viewport of VIEWPORTS) {
           await settled(page)
           await shot(page, 'struggles')
           clearComments()
+        })
+
+        test('Settings, setting up two-step sign-in', async ({ page }) => {
+          const forget = () => {
+            localSql(
+              `delete from auth.mfa_factors where user_id = (select id from auth.users where email = '${ACCOUNTS.admin.email}')`,
+            )
+          }
+          forget()
+          await page.goto('settings')
+          await settled(page)
+          await shot(page, 'settings')
+          await page.getByRole('button', { name: 'Turn on two-step sign-in' }).click()
+          await expect(page.getByRole('img', { name: /^QR code/ })).toBeVisible()
+          await settled(page)
+          await shot(page, 'settings-two-step')
+          forget()
         })
 
         test('the Retry queue', async ({ page }) => {
