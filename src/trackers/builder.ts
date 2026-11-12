@@ -35,6 +35,27 @@ export const QUESTION_TYPES: { type: FieldTypeName; label: string; hint: string 
   { type: 'photo', label: 'A photo', hint: 'Taken or chosen on the device.' },
 ]
 
+/** Only a plan tracker's sessions list problems, so only it can ask about them. */
+export const PLAN_QUESTION = {
+  type: 'plan_checklist',
+  label: 'The session’s problems',
+  hint: 'A box for each problem the session lists: which were hard?',
+} as const
+
+/** The question types a draft can use: the plan's problems only on a plan tracker. */
+export function questionTypes(draft: Pick<Draft, 'cadence'>) {
+  return draft.cadence.type === 'plan' ? [...QUESTION_TYPES, PLAN_QUESTION] : QUESTION_TYPES
+}
+
+/** A made-up session for the preview of a plan tracker, so its problem boxes show. */
+export const SAMPLE_SESSION = {
+  session: 1,
+  topic: 'A sample session',
+  page_start: 12,
+  page_end: 13,
+  problems: ['p. 12 #1', 'p. 12 #2', 'p. 13 #3'],
+} as const
+
 /** Types whose question lists choices. */
 export const WITH_OPTIONS: ReadonlySet<FieldTypeName> = new Set([
   'select',
@@ -168,6 +189,9 @@ export function newQuestion(type: FieldTypeName, label: string, draft: Draft): F
     label,
     draft.fields.map((f) => f.key),
   )
+  if (type === 'plan_checklist') {
+    return { key, type, label, required: false, optionsFrom: 'plan.problems' }
+  }
   const field: FieldDefinition = { key, type, label, required: type !== 'photo' }
   if (WITH_OPTIONS.has(type)) {
     field.options = [
@@ -219,7 +243,8 @@ export function removeQuestion(draft: Draft, key: string): Draft {
         if (Object.keys(rest).length === 0) delete next.showIf
         return next
       }),
-    metrics: draft.metrics.filter((m) => !leans(m)),
+    metrics: draft.metrics.filter((m) => !leans(m) && !JSON.stringify(m).includes(`(${key})`)),
+    followups: draft.followups?.from === key ? undefined : draft.followups,
   }
 }
 
@@ -271,6 +296,20 @@ export function suggestMetrics(draft: Draft): Suggestion[] {
           period: 'week',
         },
         `“${f.label}” added up over the week`,
+      )
+    }
+    if (f.type === 'plan_checklist' && !daily) {
+      add(
+        {
+          key: `${f.key}_rate`,
+          type: 'ratio',
+          label: 'Solved on my own',
+          numerator: `count(plan.problems) - count(${f.key})`,
+          denominator: 'count(plan.problems)',
+          format: 'percent',
+          nullWhen: 'denominator = 0',
+        },
+        `the share of the session’s problems not ticked in “${f.label}”`,
       )
     }
     if (f.type === 'rating_1_5' || f.type === 'number') {
