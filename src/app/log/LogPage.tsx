@@ -57,6 +57,29 @@ export function LogPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, key, draft?.key])
 
+  // The data on hand can be older than the server's: a log made on another device, or
+  // one synced just before a reload. When that log turns up after a new draft was
+  // started, start again from it, unless the student has already changed something
+  // (saving the blank draft would collide with the log and be refused).
+  // Only a log the server already has: one still on this device was saved from here.
+  const arrived = existing?.sync === 'synced' ? existing.id : undefined
+  useEffect(() => {
+    if (!draft || draft.editing || !arrived || !tracker || draft.key !== key) return
+    let current = true
+    void getDraft(key).then((saved) => {
+      if (!current) return
+      const untouched =
+        !saved || (saved.step === 0 && JSON.stringify(saved.data) === JSON.stringify(draft.data))
+      if (!untouched) return
+      setDraft(freshDraft(key, outbox.userId, assignmentId, tracker, plan, date, existing))
+    })
+    return () => {
+      current = false
+    }
+    // Only when the log arrives; the rest is read as it stands then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [arrived, draft?.editing, draft?.key])
+
   if (data.status === 'loading') {
     return (
       <p role="status" className="text-muted-foreground">
@@ -94,7 +117,8 @@ export function LogPage() {
   }
   return (
     <LogFlow
-      key={draft.key}
+      // A new entry id (the saved log turned up) starts the flow afresh.
+      key={`${draft.key}:${draft.entryId}`}
       tracker={tracker}
       plan={plan ?? null}
       existing={existing}
