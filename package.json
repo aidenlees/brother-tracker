@@ -22,6 +22,7 @@
     "e2e:fixtures": "node scripts/e2e-fixtures.ts",
     "env:local": "node scripts/local-env.ts",
     "gen:icons": "pwa-assets-generator",
+    "backup:check": "node scripts/backup-check.ts",
     "gen:parity": "vitest run src/trackers/parity.test.ts --update",
     "gen:types": "supabase gen types --lang typescript --schema public > src/lib/database.types.ts && prettier --write src/lib/database.types.ts",
     "check:tokens": "node scripts/check-tokens.ts",

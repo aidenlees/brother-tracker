@@ -70,6 +70,7 @@ pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (n
 pnpm build && pnpm check:secrets   # fails on service_role, sb_secret_ or a JWT in src/ or dist/
 supabase db push         # apply migrations to the linked cloud project
 # Nightly backup: .github/workflows/backup.yml (Actions -> Backup -> Run workflow runs it now); how to restore is at the top of that file
+pnpm backup:check <copy.tar.gz>   # is a downloaded backup whole (roles, every table and its data, the accounts)? Row counts per table; touches no database
 
 # Before e2e on a fresh stack: supabase db reset && pnpm seed && pnpm e2e:fixtures && pnpm env:local
 ```
@@ -91,9 +92,9 @@ supabase/
 seed/
   trackers.json        launch tracker definitions
   math_sessions.json   the math plan (plan template source, built by `pnpm plan:math`), with each session's problem numbers (read once from the book, which stays out of the repo)
-scripts/               seed, plan-math, book-pages, env:local, e2e-fixtures (LOCAL ONLY), backup (the nightly upload and prune), check-tokens, check-secrets, theme-colors
+scripts/               seed, plan-math, book-pages, env:local, e2e-fixtures (LOCAL ONLY), backup (the nightly upload and prune), backup-check, check-tokens, check-secrets, theme-colors
 e2e/                   Playwright specs; supabase.ts talks to the local stack only
-.github/workflows/     ci.yml, deploy.yml, backup.yml
+.github/workflows/     ci.yml, deploy.yml, backup.yml (and .github/dependabot.yml)
 ```
 
 ---
@@ -339,6 +340,7 @@ Mark the current phase when it changes.
   - *Done when:* a third tracker is built in under 5 minutes with no code, and a second test student is added and assigned math with a shifted start date, all from the UI.
 - [ ] **5. Hardening**
   - Builds: adversarial security pass, restore drill, Dependabot.
+  - Shipped first: Dependabot (weekly, grouped, a 7-day cooldown on new releases), `pnpm backup:check` for the drill, and a log opened before a synced entry arrived now starts from that entry.
 
 ---
 
