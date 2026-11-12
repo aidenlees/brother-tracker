@@ -38,6 +38,8 @@ function themeColor(): Plugin {
           name: 'theme-color',
           media: `(prefers-color-scheme: ${scheme})`,
           content: paper[scheme],
+          // A theme chosen in Settings picks one of these (src/lib/theme.ts).
+          'data-scheme': scheme,
         },
         injectTo: 'head',
       })),
