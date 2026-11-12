@@ -16,6 +16,7 @@ const ROLES: readonly string[] = ['student', 'admin', 'viewer'] satisfies Role[]
 
 function describe(error: AuthError): string {
   if (error.code === 'invalid_credentials') return 'That email and password don’t match an account.'
+  if (error.code === 'user_banned') return 'This account is turned off. Ask your admin.'
   if (error.status === 429) return 'Too many tries. Wait a minute, then try again.'
   if (error.code === 'mfa_verification_failed') {
     return 'That code didn’t work. Check the app and try again.'

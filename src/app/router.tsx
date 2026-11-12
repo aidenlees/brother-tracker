@@ -10,6 +10,7 @@ import {
   LogPage,
   LoginPage,
   OverviewPage,
+  PeoplePage,
   PlanPage,
   RetriesPage,
   SessionPage,
@@ -33,6 +34,7 @@ const BUILT: Partial<Record<string, ReactNode>> = {
   retries: <RetriesPage />,
   settings: <SettingsPage />,
   export: <ExportPage />,
+  people: <PeoplePage />,
 }
 
 export const router = createBrowserRouter(

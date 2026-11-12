@@ -140,7 +140,8 @@ function MainNav({ screens }: { screens: Screen[] }) {
           'text-small',
           folds
             ? cn(
-                'flex-col gap-1 border-t border-border py-2 sm:flex sm:flex-row sm:gap-6 sm:border-0 sm:py-0',
+                'flex-col gap-1 border-t border-border py-2 sm:flex sm:flex-row sm:border-0 sm:py-0',
+                screens.length > 6 ? 'sm:gap-4' : 'sm:gap-6',
                 open ? 'flex' : 'hidden',
               )
             : 'flex gap-6',
