@@ -2,10 +2,12 @@ import { useId, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { EmptyNote, Page } from '@/components/Page'
 import { StudentPicker } from '@/components/StudentPicker'
+import { sheet, SHEETS_GAP } from '@/components/sheet'
 import { useStudents, type Student } from '@/lib/admin-logs'
 import { formatDay } from '@/lib/dates'
 import { useRetryQueue, type QueuedRetry, type TrackerQueue } from '@/lib/retry-queue'
 import { useToday } from '@/lib/use-today'
+import { cn } from '@/lib/utils'
 import { dueLabel } from '@/trackers/followups'
 import { sessionLabel } from '@/trackers/plan'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
@@ -76,7 +78,7 @@ function Queue({ student, today }: { student: Student; today: string }) {
     return <EmptyNote>No retries open for {student.name}.</EmptyNote>
   }
   return (
-    <ul className="flex flex-col gap-4">
+    <ul className={cn('flex flex-col', SHEETS_GAP)}>
       {queue.data.map((card) => (
         <li key={card.assignmentId}>
           <TrackerCard card={card} studentId={student.id} today={today} />
@@ -109,7 +111,7 @@ function TrackerCard({
       style={
         tracker ? ({ '--tracker': `var(--tracker-${tracker.color})` } as CSSProperties) : undefined
       }
-      className="flex flex-col gap-6 rounded-lg border border-border bg-card p-5 sm:p-6"
+      className={sheet(true)}
     >
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-3">

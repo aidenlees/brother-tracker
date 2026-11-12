@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode, type SyntheticEvent } from 'react'
 import { Page } from '@/components/Page'
+import { sheet } from '@/components/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,10 +37,7 @@ function Card({
   headingId: string
 }) {
   return (
-    <section
-      aria-labelledby={headingId}
-      className="flex flex-col gap-6 rounded-lg border border-border bg-card p-5 sm:p-6"
-    >
+    <section aria-labelledby={headingId} className={sheet()}>
       <h2 id={headingId} className="font-heading text-title text-foreground">
         {title}
       </h2>

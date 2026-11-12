@@ -24,7 +24,8 @@ const SPOKEN: Record<'daily' | 'plan', Record<DayState, string>> = {
 }
 
 /**
- * The last 7 days at the foot of a Today card, oldest on the left: a mark per day, and
+ * The last 7 days at the foot of a Today card, oldest on the left, as a practice record:
+ * a box and a mark per day, and
  * above it the streak in plain words when the tracker keeps one. Tap a day to log it
  * late or change it (entries lock 7 days after logging, and then open read-only).
  */
@@ -45,25 +46,24 @@ export function WeekStrip({
   return (
     <nav aria-label="Last 7 days" className="flex flex-col gap-3 border-t border-border pt-6">
       {line ? <p className="text-small text-foreground">{line}</p> : null}
-      <ol className="grid grid-cols-7 gap-1">
+      {/* A practice record: seven joined boxes, one per day, like the chart a teacher hands out. */}
+      <ol className="grid grid-cols-7 divide-x divide-border overflow-hidden rounded-md border border-border">
         {days.map((day) => {
           const weekday = formatDay(day.date).slice(0, 3)
           const isToday = day.date === today
           const cell = (
-            <span className="flex flex-col items-center gap-2 py-2">
+            <span className="flex flex-col items-center gap-2 pt-2 pb-3">
               <span
                 className={cn(
-                  'text-caption',
-                  isToday ? 'font-medium text-foreground' : 'text-muted-foreground',
+                  'border-b-2 px-0.5 text-caption',
+                  isToday
+                    ? 'border-tracker font-medium text-foreground'
+                    : 'border-transparent text-muted-foreground',
                 )}
               >
                 {weekday}
               </span>
               <Mark state={day.state} />
-              <span
-                aria-hidden
-                className={cn('h-0.5 w-4 rounded-sm', isToday ? 'bg-tracker' : 'bg-transparent')}
-              />
             </span>
           )
           const label = `${formatDay(day.date, 'long')}: ${SPOKEN[cadence][day.state]}`
@@ -76,13 +76,13 @@ export function WeekStrip({
                   : null
                 : logPath(assignmentId, { date: day.date })
           return (
-            <li key={day.date}>
+            <li key={day.date} className={cn(day.state === 'before' && 'bg-muted/40')}>
               {href ? (
                 <Link
                   to={href}
                   aria-label={label}
                   aria-current={isToday ? 'date' : undefined}
-                  className="block rounded-md transition-colors hover:bg-muted"
+                  className="block transition-colors hover:bg-muted focus-visible:-outline-offset-2"
                 >
                   {cell}
                 </Link>
@@ -99,27 +99,27 @@ export function WeekStrip({
   )
 }
 
-/** Filled for done, a ring for a day still to log, a dot for a day off. */
+/** A pen tick for done, a dash for logged-not-done, an empty box to fill in, a dot for a day off. */
 function Mark({ state }: { state: DayState }) {
   switch (state) {
     case 'done':
       return (
-        <span className="flex size-7 items-center justify-center rounded-full bg-tracker text-background">
-          <Check aria-hidden className="size-4" strokeWidth={2.5} />
+        <span className="flex size-6 items-center justify-center text-tracker">
+          <Check aria-hidden className="size-6" strokeWidth={3} />
         </span>
       )
     case 'not-done':
       return (
-        <span className="flex size-7 items-center justify-center rounded-full border border-input text-muted-foreground">
-          <Minus aria-hidden className="size-4" />
+        <span className="flex size-6 items-center justify-center text-muted-foreground">
+          <Minus aria-hidden className="size-5" strokeWidth={2.5} />
         </span>
       )
     case 'open':
-      return <span className="size-7 rounded-full border border-input" />
+      return <span className="m-0.5 size-5 rounded-sm border border-dashed border-input" />
     case 'rest':
     case 'before':
       return (
-        <span className="flex size-7 items-center justify-center">
+        <span className="flex size-6 items-center justify-center">
           <span
             className={cn('size-1.5 rounded-full bg-border', state === 'before' && 'opacity-50')}
           />

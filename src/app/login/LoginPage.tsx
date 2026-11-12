@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type ReactNode, type SubmitEvent } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { note } from '@/components/sheet'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth, type SignInResult } from '@/lib/auth-context'
@@ -224,7 +225,7 @@ function ErrorText({ message }: { message: string | null }) {
 
 function Notice({ children }: { children: ReactNode }) {
   return (
-    <p role="status" className="rounded-lg border border-border bg-card px-4 py-3 text-foreground">
+    <p role="status" className={note()}>
       {children}
     </p>
   )

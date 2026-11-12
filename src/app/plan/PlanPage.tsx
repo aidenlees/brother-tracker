@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Check, Pencil, RotateCcw } from 'lucide-react'
 import { useId, useMemo, useState, type CSSProperties } from 'react'
 import { EmptyNote, Page } from '@/components/Page'
 import { Button } from '@/components/ui/button'
+import { note } from '@/components/sheet'
 import { Input } from '@/components/ui/input'
 import { addDays, daysBetween, formatDay } from '@/lib/dates'
 import {
@@ -199,7 +200,7 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
       {notice ? (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-card px-5 py-3 text-small text-foreground"
+          className={note('flex flex-wrap items-center gap-x-4 gap-y-2 text-small')}
         >
           <span>{notice.text}</span>
           {notice.undo ? (
@@ -250,9 +251,9 @@ function PlanEditor({ assignment }: { assignment: PlanAssignment }) {
             Week of {formatDay(week, 'long')}
             {week === thisWeek ? ' · this week' : ''}
           </h2>
-          <ol className="flex flex-col rounded-lg border border-border bg-card">
+          <ol className="flex flex-col border-t border-foreground">
             {weekItems.map((item) => (
-              <li key={item.id} className="border-b border-border last:border-b-0">
+              <li key={item.id} className="border-b border-border">
                 <SessionRow
                   item={item}
                   estimate={estimate(item.details)}
@@ -333,7 +334,7 @@ function SessionRow({
   ].filter((part): part is string => Boolean(part))
   const name = `${formatDay(item.date, 'long')}, ${sessionLabel(item.details) ?? item.title}`
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 sm:px-6">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
       <TrackerIcon name={icon} className="size-4 shrink-0 self-start mt-1 text-tracker" />
       <span className="flex min-w-48 flex-1 flex-col">
         <span className="flex flex-wrap items-center gap-x-3 text-small text-muted-foreground tabular-nums">
@@ -466,7 +467,7 @@ function SessionForm({
   return (
     <form
       aria-label={`Edit ${formatDay(item.date, 'long')}`}
-      className="flex flex-col gap-4 border-t border-border bg-background px-5 py-5 sm:px-6"
+      className="mb-4 flex flex-col gap-4 border-l-2 border-tracker py-2 pl-4"
       onSubmit={(e) => {
         e.preventDefault()
         submit()
@@ -619,7 +620,7 @@ function DayOff({
   return (
     <form
       aria-label="Day off"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-card px-5 py-4 sm:px-6"
+      className="flex flex-col gap-3 border-y border-border py-4"
       onSubmit={(e) => {
         e.preventDefault()
         if (date) onDayOff(date)
