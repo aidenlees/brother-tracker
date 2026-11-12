@@ -82,7 +82,7 @@ src/
   components/     shared UI (shadcn in components/ui)
   theme/          tokens.css: colours, type, radius, spacing, both themes (the only place the look is defined)
   trackers/       field registry (fields/, one file per type), entry checks (entry.ts mirrors entries_validate), plan and followup rules, the last 7 days (week.ts), metrics
-  lib/            supabase client, auth (offline-safe), query cache, offline outbox (drafts, ops, photos, sync), date utils
+  lib/            supabase client, auth (offline-safe), query cache, offline outbox (drafts, ops, photos, sync), date utils, export (CSV and .xlsx writers)
 supabase/
   migrations/     timestamped SQL; never edit an applied migration, add a new one
   functions/      admin-users, digest-email, push-reminders, calendar-sync, keep-alive
@@ -276,7 +276,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 | Plan editor | admin | Every session by week (tasks have their own screen), each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
 | People | admin | Add or disable accounts (via `admin-users`), set roles, link viewers to students, assign trackers with a start date |
-| Export | admin | CSV / .xlsx per tracker and person; math uses the original sheet's columns |
+| Export | admin | Person picker. One Excel workbook (a sheet per tracker, then every retry and every comment), or any one of those tables as CSV, made in the browser from what the admin can read (`src/lib/export/`). A tracker's sheet: a row per log, oldest first; Date (and for a plan: Planned for, Session, Pages); a column per field the tracker has ever had (all `tracker_versions`); Retries, Comments, Logged, Last changed. Numbers stay numbers, times are New York, and a cell that would run as a formula is quoted. |
 | Settings | all | Theme (System, Light or Dark, saved on this device and applied before the page draws). For the admin, two-step sign-in: turn on by scanning a QR code (or typing the key) into an authenticator app and confirming a code; turn off with a code; a lost phone is cleared in the Supabase dashboard. Reminder time comes with push reminders (not built). |
 
 Navigation shows only the screens a role can use, and only those built (an unbuilt screen keeps its address and says so). On a phone, a role with more than four screens sees the current one and a Menu.
@@ -337,6 +337,7 @@ Mark the current phase when it changes.
   - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.
+  - Shipped first: Export (CSV and .xlsx).
   - *Done when:* a third tracker is built in under 5 minutes with no code, and a second test student is added and assigned math with a shifted start date, all from the UI.
 - [ ] **5. Hardening**
   - Builds: adversarial security pass, restore drill, Dependabot.
