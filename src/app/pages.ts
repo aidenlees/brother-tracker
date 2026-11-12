@@ -34,3 +34,6 @@ export const SettingsPage = lazy(() =>
 export const ExportPage = lazy(() =>
   import('./export/ExportPage').then((m) => ({ default: m.ExportPage })),
 )
+export const PeoplePage = lazy(() =>
+  import('./people/PeoplePage').then((m) => ({ default: m.PeoplePage })),
+)

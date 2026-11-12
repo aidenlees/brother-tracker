@@ -21,12 +21,15 @@ export function localEnv(): { url: string; key: string } {
  * straight to the API rather than through the app. Uses the publishable key only, so
  * RLS applies exactly as it does in the browser.
  */
-export async function signedInClient(email: string): Promise<SupabaseClient> {
+export async function signedInClient(
+  email: string,
+  password: string = PASSWORD,
+): Promise<SupabaseClient> {
   const { url, key } = localEnv()
   const client = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-  const { error } = await client.auth.signInWithPassword({ email, password: PASSWORD })
+  const { error } = await client.auth.signInWithPassword({ email, password })
   if (error) throw error
   return client
 }

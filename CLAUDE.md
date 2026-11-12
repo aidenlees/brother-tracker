@@ -63,7 +63,7 @@ pnpm seed                # upsert seed/trackers.json -> trackers, seed/math_sess
 pnpm e2e:fixtures        # LOCAL ONLY (refuses --remote): the fake students' assignments, entries and retries around today, and placeholder book pages if none; after db reset + seed
 pnpm plan:math           # rebuild seed/math_sessions.json: every page in order, 6 days a week, ~45 min a day (scripts/plan-math-build.ts; tests check it isn't stale)
 pnpm book:pages          # render the plan's printed pages from the book PDF in seed/ (gitignored) and upload them to the private book-pages bucket; --remote for the cloud (needs Python 3 + pypdfium2 + Pillow)
-pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview); screenshots land in test-results/screens/
+pnpm e2e                 # Playwright, one worker: `chromium` on the dev server, `pwa` on a production build (vite preview), and the Edge Functions (`supabase functions serve`); screenshots land in test-results/screens/
 pnpm e2e --grep @pace    # the student-speed timing test: math log under 2 min, violin check-in about 10 s (also runs in pnpm e2e)
 pnpm e2e --project=pwa   # installed-app tests only: manifest, service worker, offline reload
 pnpm typecheck && pnpm lint   # lint = ESLint + Prettier check + check:tokens (no hard-coded colours/fonts/sizes/radii)
@@ -85,7 +85,7 @@ src/
   lib/            supabase client, auth (offline-safe), query cache, offline outbox (drafts, ops, photos, sync), date utils, export (CSV and .xlsx writers)
 supabase/
   migrations/     timestamped SQL; never edit an applied migration, add a new one
-  functions/      admin-users, digest-email, push-reminders, calendar-sync, keep-alive
+  functions/      admin-users (built; handler.ts holds its rules); digest-email, push-reminders, calendar-sync, keep-alive when asked for
   tests/          pgTAP
   seed.sql        LOCAL ONLY: fake users (student@example.test, admin@…, viewer@…, student2@…)
 seed/
@@ -114,7 +114,7 @@ e2e/                   Playwright specs; supabase.ts talks to the local stack on
 
 **Adding people**
 - **First setup:** the admin creates accounts in the Supabase dashboard and runs one SQL snippet with `profiles`, `viewer_links` and `assign_tracker` calls. It lives in the plan doc, not in this repo.
-- **After Phase 4:** the People page does all of this. It calls the `admin-users` Edge Function (service key; verifies the caller is admin) to create or disable an account and set a temporary password, then sets role, links and assignments.
+- **People page** (built in Phase 4) does all of this. It calls the `admin-users` Edge Function (the secret key; it checks the caller is an active admin, past the code once two-step is on) to create or disable an account, set a temporary password or change a role (only once no tracker or viewer link ties the person to the old one, never your own); names, viewer links and assignments are ordinary admin writes under RLS.
 
 ## Security rules (non-negotiable)
 
@@ -275,7 +275,7 @@ The exact definitions are in `seed/trackers.json`. If this section and that file
 | Tasks | admin | Add a task for one student or several: title, optional notes, a day, and a repeat (every day or chosen weekdays, up to 100 days). Each student's tasks by day, done or not, with edit and delete (one, or the rest of a series). |
 | Plan editor | admin | Every session by week (tasks have their own screen), each with its estimated minutes: edit date, topic and pages (the problem checkboxes and the estimate follow), mark a day off (that day's session and every later one move a plan day later, the rest day stays free), move a session and every later one a plan day later or earlier, or reset it to the seed baseline |
 | Tracker builder | admin | Template or blank → drag fields → live preview of the student's log flow → metrics + cadence → publish. Editing bumps `field_version`. |
-| People | admin | Add or disable accounts (via `admin-users`), set roles, link viewers to students, assign trackers with a start date |
+| People | admin | Students, viewers and admins, each with email and last sign-in. Add a person (first name, email, role, a generated temporary password to hand over). Per person: rename, new password, disable/enable, change role (not your own). A student's trackers (assign with any start date, the plan shifts with it; pause or resume) and who sees them; a viewer's students as checkboxes. |
 | Export | admin | Person picker. One Excel workbook (a sheet per tracker, then every retry and every comment), or any one of those tables as CSV, made in the browser from what the admin can read (`src/lib/export/`). A tracker's sheet: a row per log, oldest first; Date (and for a plan: Planned for, Session, Pages); a column per field the tracker has ever had (all `tracker_versions`); Retries, Comments, Logged, Last changed. Numbers stay numbers, times are New York, and a cell that would run as a formula is quoted. |
 | Settings | all | Theme (System, Light or Dark, saved on this device and applied before the page draws). For the admin, two-step sign-in: turn on by scanning a QR code (or typing the key) into an authenticator app and confirming a code; turn off with a code; a lost phone is cleared in the Supabase dashboard. Reminder time comes with push reminders (not built). |
 
@@ -305,11 +305,11 @@ Navigation shows only the screens a role can use, and only those built (an unbui
 
 ## Connectors (Edge Functions + pg_cron). Each one is a switch: it skips quietly if its secrets are unset.
 
-Built so far: `backup`. `admin-users` comes with People (Phase 4); `digest-email`, `push-reminders` and `calendar-sync` wait until the admin asks for them (decided 2026-11-09).
+Built so far: `backup`, `admin-users` (People). Deploy a function with `pnpm supabase functions deploy <name>`; `digest-email`, `push-reminders` and `calendar-sync` wait until the admin asks for them (decided 2026-11-09).
 
 | Function | Schedule | Does | Secrets |
 |---|---|---|---|
-| `admin-users` | on call | Create or disable accounts and set passwords. Admin callers only. | service key (built in) |
+| `admin-users` | on call | List accounts (email, last sign-in), create one with a temporary password, set a new one, disable or enable, change a role. Active admin callers only (aal2 once two-step is on); `verify_jwt` off, the session checked in code. Rules in `handler.ts` (Vitest), wiring in `index.ts`. | secret key (built in) |
 | `digest-email` | Sun 18:00 ET | Plain-numbers summary to the admin and each viewer, covering their linked students | `SMTP_USER`, `SMTP_PASS` (Gmail app password, `smtp.gmail.com:465`) |
 | `push-reminders` | every 15 min | Web Push at each student's `remind_at`, plus one 20:00 nudge if a plan item is unlogged | VAPID keys |
 | `calendar-sync` | on plan_items change + nightly | Mirrors plan items to a shared Google Calendar | `GOOGLE_SA_JSON`, `CALENDAR_ID` |
@@ -337,7 +337,7 @@ Mark the current phase when it changes.
   - *Done when:* one real week's numbers on Overview match a hand check.
 - [ ] **4. Builder, People, export**
   - Builds: tracker builder with live preview and versioning, People page + `admin-users`, CSV/xlsx export.
-  - Shipped first: Export (CSV and .xlsx).
+  - Shipped first: Export (CSV and .xlsx); then People and `admin-users`.
   - *Done when:* a third tracker is built in under 5 minutes with no code, and a second test student is added and assigned math with a shifted start date, all from the UI.
 - [ ] **5. Hardening**
   - Builds: adversarial security pass, restore drill, Dependabot.

@@ -21,5 +21,13 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["vite.config.ts", "playwright.config.ts", "pwa-assets.config.ts", "scripts", "e2e"]
+  "include": [
+    "vite.config.ts",
+    "playwright.config.ts",
+    "pwa-assets.config.ts",
+    "scripts",
+    "e2e",
+    "supabase/functions/admin-users/handler.ts",
+    "supabase/functions/admin-users/handler.test.ts"
+  ]
 }

@@ -52,5 +52,13 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },
+    {
+      // The Edge Functions (admin-users, for People), on the local stack. Ready once a
+      // request without a session is refused.
+      command: 'pnpm supabase functions serve',
+      url: 'http://127.0.0.1:54321/functions/v1/admin-users',
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
   ],
 })
