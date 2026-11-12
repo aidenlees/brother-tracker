@@ -29,8 +29,11 @@ import {
   move,
   newQuestion,
   optionsFrom,
+  PLAN_QUESTION,
   QUESTION_TYPES,
+  questionTypes,
   removeQuestion,
+  SAMPLE_SESSION,
   suggestMetrics,
   toDefinition,
   WITH_OPTIONS,
@@ -56,8 +59,7 @@ const ICON_NAMES: Record<string, string> = {
 }
 
 const typeLabel = (type: FieldTypeName) =>
-  QUESTION_TYPES.find((t) => t.type === type)?.label ??
-  (type === 'plan_checklist' ? 'The plan’s problems' : type)
+  [...QUESTION_TYPES, PLAN_QUESTION].find((t) => t.type === type)?.label ?? type
 
 /** The editor: about, questions, a live preview, weekly numbers, then publish. */
 export function TrackerEditor({
@@ -115,9 +117,42 @@ function About({
   const iconId = useId()
   const colorId = useId()
   const todayId = useId()
+  const cadenceId = useId()
   const daily = draft.cadence.type === 'daily'
   return (
     <Sheet title="About">
+      {tracker === null ? (
+        <div className="flex flex-col gap-2">
+          <span id={cadenceId} className="text-small font-medium text-foreground">
+            How often
+          </span>
+          <Segmented
+            name="cadence"
+            options={[
+              { key: 'daily', label: 'Every day' },
+              { key: 'plan', label: 'Sessions on a plan' },
+            ]}
+            value={draft.cadence.type}
+            onChange={(key) => {
+              update(
+                key === 'plan'
+                  ? { cadence: { type: 'plan' }, display: undefined }
+                  : {
+                      cadence: { type: 'daily' },
+                      followups: undefined,
+                      fields: draft.fields.filter((f) => f.type !== 'plan_checklist'),
+                    },
+              )
+            }}
+            labelId={cadenceId}
+          />
+          <p className="text-small text-muted-foreground">
+            {daily
+              ? 'A log a day, any day.'
+              : 'A log per session; you add the sessions on the Plan screen once a student has it.'}
+          </p>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor={nameId}>Name</Label>
         <Input
@@ -208,7 +243,7 @@ function About({
         <p className="text-small text-muted-foreground">
           {draft.display === 'task_list'
             ? 'Tasks the admin adds on the Tasks screen, ticked off on Today.'
-            : 'Follows a plan: one log per planned session (the Plan screen edits the sessions).'}
+            : 'Sessions on a plan: a log per session (the Plan screen adds and edits them).'}
           {tracker ? ` Its link name is “${tracker.slug}”.` : null}
         </p>
       )}
@@ -255,6 +290,7 @@ function Questions({
                 count={draft.fields.length}
                 saved={draft.savedKeys.includes(field.key)}
                 earlier={draft.fields.slice(0, index)}
+                types={questionTypes(draft)}
                 onChange={(next) => {
                   replace(index, next)
                 }}
@@ -270,10 +306,12 @@ function Questions({
         </SortableContext>
       </DndContext>
       <AddQuestion
+        types={questionTypes(draft)}
         onAdd={(type, label) => {
           setDraft((d) => ({ ...d, fields: [...d.fields, newQuestion(type, label, d)] }))
         }}
       />
+      <Retries draft={draft} setDraft={setDraft} />
     </Sheet>
   )
 }
@@ -284,6 +322,7 @@ function QuestionEditor({
   count,
   saved,
   earlier,
+  types,
   onChange,
   onMove,
   onRemove,
@@ -293,6 +332,7 @@ function QuestionEditor({
   count: number
   saved: boolean
   earlier: FieldDefinition[]
+  types: readonly { type: FieldTypeName; label: string }[]
   onChange: (field: FieldDefinition) => void
   onMove: (to: number) => void
   onRemove: () => void
@@ -430,11 +470,13 @@ function QuestionEditor({
             }}
             className="h-11 max-w-sm rounded-md border border-input bg-card px-3 text-body text-foreground"
           >
-            {QUESTION_TYPES.map((t) => (
-              <option key={t.type} value={t.type}>
-                {t.label}
-              </option>
-            ))}
+            {types
+              .filter((t) => t.type !== 'plan_checklist')
+              .map((t) => (
+                <option key={t.type} value={t.type}>
+                  {t.label}
+                </option>
+              ))}
           </select>
         </div>
       ) : (
@@ -545,7 +587,13 @@ function QuestionEditor({
   )
 }
 
-function AddQuestion({ onAdd }: { onAdd: (type: FieldTypeName, label: string) => void }) {
+function AddQuestion({
+  types,
+  onAdd,
+}: {
+  types: readonly { type: FieldTypeName; label: string }[]
+  onAdd: (type: FieldTypeName, label: string) => void
+}) {
   const labelId = useId()
   const typeId = useId()
   const [label, setLabel] = useState('')
@@ -591,7 +639,7 @@ function AddQuestion({ onAdd }: { onAdd: (type: FieldTypeName, label: string) =>
             }}
             className="h-11 rounded-md border border-input bg-card px-3 text-body text-foreground"
           >
-            {QUESTION_TYPES.map((t) => (
+            {types.map((t) => (
               <option key={t.type} value={t.type}>
                 {t.label}
               </option>
@@ -608,6 +656,58 @@ function AddQuestion({ onAdd }: { onAdd: (type: FieldTypeName, label: string) =>
   )
 }
 
+/** A plan tracker with a problem checklist can make a retry of each problem ticked. */
+function Retries({
+  draft,
+  setDraft,
+}: {
+  draft: Draft
+  setDraft: (update: (d: Draft) => Draft) => void
+}) {
+  const daysId = useId()
+  const checklist = draft.fields.find((f) => f.type === 'plan_checklist')
+  if (draft.cadence.type !== 'plan' || !checklist) return null
+  const on = draft.followups?.from === checklist.key
+  const days = draft.followups?.defaultDueDays ?? 2
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-5">
+      <label className="flex items-center gap-2 text-foreground">
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={(e) => {
+            const checked = e.target.checked
+            setDraft((d) => ({
+              ...d,
+              followups: checked ? { from: checklist.key, defaultDueDays: days } : undefined,
+            }))
+          }}
+          className="size-4 accent-primary"
+        />
+        Make a retry of each problem ticked in “{checklist.label}”
+      </label>
+      {on ? (
+        <span className="flex items-center gap-2">
+          <Label htmlFor={daysId}>due</Label>
+          <Input
+            id={daysId}
+            type="number"
+            min={0}
+            max={14}
+            value={days}
+            onChange={(e) => {
+              const n = Math.max(0, Math.min(14, Math.round(Number(e.target.value) || 0)))
+              setDraft((d) => ({ ...d, followups: { from: checklist.key, defaultDueDays: n } }))
+            }}
+            className="h-9 w-20 tabular-nums"
+          />
+          <span className="text-small text-muted-foreground">days later</span>
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 function Preview({ draft }: { draft: Draft }) {
   return (
     <Sheet title="Preview" hint="The student’s log, as they’d see it. Try it: nothing is saved.">
@@ -617,6 +717,7 @@ function Preview({ draft }: { draft: Draft }) {
         icon={draft.icon}
         color={draft.color}
         fields={draft.fields}
+        plan={draft.cadence.type === 'plan' ? SAMPLE_SESSION : null}
       />
     </Sheet>
   )

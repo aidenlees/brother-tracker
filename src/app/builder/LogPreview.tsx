@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, Check, RotateCcw } from 'lucide-react'
 import { useId, useMemo, useState, type CSSProperties } from 'react'
 import { Button } from '@/components/ui/button'
 import type { TrackerAccent } from '@/theme/accents'
-import type { FieldDefinition } from '@/trackers/definition'
+import type { FieldDefinition, PlanDetails } from '@/trackers/definition'
 import { cleanEntry, initialData, shownFields, type EntryData } from '@/trackers/entry'
 import { FIELD_REGISTRY } from '@/trackers/fields/registry'
 import { TrackerIcon } from '@/trackers/TrackerIcon'
@@ -17,30 +17,33 @@ export function LogPreview({
   icon,
   color,
   fields,
+  plan = null,
 }: {
   name: string
   icon: string
   color: TrackerAccent
   fields: FieldDefinition[]
+  /** A plan tracker's preview runs on a sample session, so its problem boxes show. */
+  plan?: PlanDetails
 }) {
   const baseId = useId()
-  const [data, setData] = useState<EntryData>(() => initialData(fields, null))
+  const [data, setData] = useState<EntryData>(() => initialData(fields, plan))
   const [index, setIndex] = useState(0)
   const [problem, setProblem] = useState<string | null>(null)
   const [finished, setFinished] = useState(false)
-  const steps = useMemo(() => shownFields(fields, data, null), [fields, data])
+  const steps = useMemo(() => shownFields(fields, data, plan), [fields, data, plan])
   const at = Math.min(index, Math.max(0, steps.length - 1))
   const field = steps[at]
 
   const restart = () => {
-    setData(initialData(fields, null))
+    setData(initialData(fields, plan))
     setIndex(0)
     setProblem(null)
     setFinished(false)
   }
   const next = () => {
     if (!field) return
-    const result = cleanEntry(fields, data, null)
+    const result = cleanEntry(fields, data, plan)
     const issue = result.ok ? null : result.issues.find((i) => i.key === field.key)
     if (issue) {
       setProblem(issue.message)
@@ -125,7 +128,7 @@ export function LogPreview({
           describedBy={problem ? problemId : undefined}
           invalid={problem !== null}
           onSubmit={next}
-          plan={null}
+          plan={plan}
         />
         {problem ? (
           <p id={problemId} role="alert" className="text-destructive">

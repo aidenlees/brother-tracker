@@ -7,6 +7,7 @@ import {
   keyFrom,
   move,
   newQuestion,
+  questionTypes,
   optionsFrom,
   removeQuestion,
   slugFrom,
@@ -134,5 +135,45 @@ describe('tracker builder', () => {
       draft.fields.push(newQuestion(type as never, `A ${type}`, draft))
     }
     expect(toDefinition(draft, 1).ok).toBe(true)
+  })
+})
+
+describe('a tracker on a plan', () => {
+  const planDraft = (): Draft => ({ ...blankDraft('Reading', 5), cadence: { type: 'plan' } })
+
+  it('can ask about the session’s problems, which a daily tracker can’t', () => {
+    expect(questionTypes(blankDraft('Daily', 1)).map((t) => t.type)).not.toContain('plan_checklist')
+    const draft = planDraft()
+    expect(questionTypes(draft).map((t) => t.type)).toContain('plan_checklist')
+    const q = newQuestion('plan_checklist', 'Which were hard?', draft)
+    expect(q).toEqual({
+      key: 'which_were_hard',
+      type: 'plan_checklist',
+      label: 'Which were hard?',
+      required: false,
+      optionsFrom: 'plan.problems',
+    })
+  })
+
+  it('suggests "solved on my own" from the problems, and publishes with retries', () => {
+    const draft = planDraft()
+    draft.fields.push(newQuestion('plan_checklist', 'Which were hard?', draft))
+    const rate = suggestMetrics(draft).find((s) => s.metric.type === 'ratio')?.metric
+    expect(rate).toMatchObject({
+      numerator: 'count(plan.problems) - count(which_were_hard)',
+      denominator: 'count(plan.problems)',
+      format: 'percent',
+    })
+    if (!rate) return
+    const withRetries: Draft = {
+      ...draft,
+      metrics: [rate],
+      followups: { from: 'which_were_hard', defaultDueDays: 2 },
+    }
+    expect(toDefinition(withRetries, 1).ok).toBe(true)
+    // Removing the checklist takes its retries and its number with it.
+    const without = removeQuestion(withRetries, 'which_were_hard')
+    expect(without.followups).toBeUndefined()
+    expect(without.metrics).toEqual([])
   })
 })

@@ -173,5 +173,42 @@ export function usePlanEdits(assignmentId: string | undefined) {
     onSuccess: refresh,
   })
 
-  return { save, move }
+  /** New sessions (plan-paste.ts made them), added at once. */
+  const add = useMutation({
+    mutationFn: async (
+      items: {
+        assignment_id: string
+        date: string
+        title: string
+        sort: number
+        details: Record<string, unknown>
+      }[],
+    ) => {
+      const { data, error } = await supabase
+        .from('plan_items')
+        .insert(items.map((i) => ({ ...i, details: i.details as JsonObject })))
+        .select('id')
+      if (error?.code === '42501') throw new Error(REFUSED)
+      if (error) throw new Error('The sessions weren’t added. Reload and try again.')
+      if (data.length !== items.length) throw new Error(REFUSED)
+    },
+    onSuccess: refresh,
+  })
+
+  /** A session not yet logged. A logged one has its log tied to it: clear the log first. */
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.from('plan_items').delete().eq('id', id).select('id')
+      if (error?.code === '23503') {
+        throw new Error('It has a log, so it stays. Clear the log on Overview first.')
+      }
+      if (error || data.length === 0) throw new Error(REFUSED)
+    },
+    onSuccess: refresh,
+  })
+
+  return { save, move, add, remove }
 }
+
+const REFUSED =
+  'The database refused that. If two-step sign-in is on, sign out and in again with a code.'
