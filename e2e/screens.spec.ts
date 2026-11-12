@@ -176,6 +176,20 @@ for (const viewport of VIEWPORTS) {
           forget()
         })
 
+        test('the tracker builder, and a new tracker from a copy', async ({ page }) => {
+          await page.goto('builder')
+          await expect(page.getByRole('article', { name: 'Violin' })).toBeVisible()
+          await settled(page)
+          await shot(page, 'builder')
+          const make = page.getByRole('region', { name: 'New tracker' })
+          await make.getByLabel('Name').fill('Guitar')
+          await make.getByLabel('Start from').selectOption({ label: 'A copy of Violin' })
+          await make.getByRole('button', { name: 'Start' }).click()
+          // Nothing loads here (the one status is dnd-kit's announcer for screen readers).
+          await expect(page.getByRole('region', { name: 'Preview' })).toBeVisible()
+          await shot(page, 'builder-edit')
+        })
+
         test('People', async ({ page }) => {
           await page.goto('people')
           await expect(page.getByRole('region', { name: 'Students' })).toBeVisible()
