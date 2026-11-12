@@ -1,13 +1,15 @@
 import { AlertDialog } from 'radix-ui'
-import { Suspense } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Menu, X } from 'lucide-react'
+import { Suspense, useId, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { SyncStatus } from '@/components/SyncStatus'
+import { note } from '@/components/sheet'
 import { Button } from '@/components/ui/button'
 import { useAppUpdate } from '@/lib/app-update'
 import type { SignedInProfile } from '@/lib/auth-context'
 import { useOutbox } from '@/lib/outbox/outbox-context'
 import { cn } from '@/lib/utils'
-import { homeFor, navFor } from './nav'
+import { homeFor, navFor, type Screen } from './nav'
 
 /**
  * The signed-in frame, in the same column as every screen: the wordmark, who's signed in
@@ -32,9 +34,16 @@ export function Shell({
       >
         Skip to content
       </a>
+      {/* The notebook's margin line, down the left of the column, behind everything. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-y-0 left-1/2 -z-10 w-full max-w-2xl -translate-x-1/2"
+      >
+        <span className="absolute inset-y-0 left-3 w-px bg-margin" />
+      </div>
       <header className="border-b border-border">
         <div className="mx-auto max-w-2xl px-6">
-          <div className="flex items-center gap-4 pt-4">
+          <div className="flex items-baseline gap-4 pt-5">
             <Link
               to={homeFor(profile.role)}
               className="mr-auto font-heading text-lead text-foreground"
@@ -47,28 +56,7 @@ export function Shell({
           {/* When the status doesn't fit beside the tabs it wraps above them, so the active
               tab's underline always sits on the header's rule. */}
           <div className="flex flex-wrap-reverse items-center justify-between gap-x-6">
-            <nav aria-label="Main" className="min-w-0 overflow-x-auto">
-              {/* The admin's long list sits closer, so it fits the column on a laptop. */}
-              <ul className={cn('flex text-small', screens.length > 6 ? 'gap-4' : 'gap-6')}>
-                {screens.map((screen) => (
-                  <li key={screen.path}>
-                    <NavLink
-                      to={`/${screen.path}`}
-                      className={({ isActive }) =>
-                        cn(
-                          'inline-block border-b-2 py-3 whitespace-nowrap transition-colors',
-                          isActive
-                            ? 'border-foreground text-foreground'
-                            : 'border-transparent text-muted-foreground hover:text-foreground',
-                        )
-                      }
-                    >
-                      {screen.label}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            </nav>
+            <MainNav screens={screens} />
             {profile.role === 'student' ? (
               <div className="flex min-h-11 items-center">
                 <SyncStatus offline={offline} />
@@ -93,15 +81,102 @@ export function Shell({
   )
 }
 
+/** More screens than fit a phone's width: below 640 px they fold into a menu. */
+const FOLD_AFTER = 4
+
+const tabClass = (active: boolean) =>
+  cn(
+    'inline-block border-b-2 py-3 whitespace-nowrap transition-colors',
+    active
+      ? 'border-foreground text-foreground'
+      : 'border-transparent text-muted-foreground hover:text-foreground',
+  )
+
+/**
+ * The screens this role can use, as tabs along the header's rule. On a phone, a role
+ * with more than four screens sees the current one and a Menu button that lists them.
+ */
+function MainNav({ screens }: { screens: Screen[] }) {
+  const folds = screens.length > FOLD_AFTER
+  const { pathname } = useLocation()
+  // Open on the screen it was opened on: choosing another screen closes it.
+  const [openOn, setOpenOn] = useState<string | null>(null)
+  const open = openOn === pathname
+  const setOpen = (next: boolean) => {
+    setOpenOn(next ? pathname : null)
+  }
+  const listId = useId()
+  const current = screens.find((s) => pathname.startsWith(`/${s.path}`))
+
+  return (
+    <nav
+      aria-label="Main"
+      className={cn('min-w-0', folds && 'basis-full sm:basis-auto')}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') setOpen(false)
+      }}
+    >
+      {folds ? (
+        <div className="flex items-center justify-between sm:hidden">
+          <span className={tabClass(true)}>{current?.label ?? 'Menu'}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-expanded={open}
+            aria-controls={listId}
+            onClick={() => {
+              setOpen(!open)
+            }}
+          >
+            {open ? <X aria-hidden /> : <Menu aria-hidden />}
+            Menu
+          </Button>
+        </div>
+      ) : null}
+      <ul
+        id={listId}
+        className={cn(
+          'text-small',
+          folds
+            ? cn(
+                'flex-col gap-1 border-t border-border py-2 sm:flex sm:flex-row sm:gap-6 sm:border-0 sm:py-0',
+                open ? 'flex' : 'hidden',
+              )
+            : 'flex gap-6',
+        )}
+      >
+        {screens.map((screen) => (
+          <li key={screen.path}>
+            <NavLink
+              to={`/${screen.path}`}
+              className={({ isActive }) =>
+                folds
+                  ? cn(
+                      'block py-2 sm:inline-block sm:border-b-2 sm:py-3 sm:whitespace-nowrap',
+                      'transition-colors',
+                      isActive
+                        ? 'font-medium text-foreground sm:border-foreground sm:font-normal'
+                        : 'text-muted-foreground hover:text-foreground sm:border-transparent',
+                    )
+                  : tabClass(isActive)
+              }
+            >
+              {screen.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
 /** Once a new version of the app is downloaded: one line, and the reload into it. */
 function NewVersion() {
   const update = useAppUpdate()
   if (!update.ready) return null
   return (
-    <div
-      role="status"
-      className="mb-8 flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
-    >
+    <div role="status" className={note('mb-8 flex items-center justify-between gap-4')}>
       <p className="text-small text-foreground">A new version of the app is ready.</p>
       <Button size="sm" onClick={update.apply}>
         Update
