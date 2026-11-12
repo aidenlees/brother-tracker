@@ -6,6 +6,7 @@ import { NotBuiltPage } from './NotBuiltPage'
 import { NotFoundPage } from './NotFoundPage'
 import { RouteError, RouteErrorPage } from './RouteError'
 import {
+  ExportPage,
   LogPage,
   LoginPage,
   OverviewPage,
@@ -31,6 +32,7 @@ const BUILT: Partial<Record<string, ReactNode>> = {
   struggles: <StrugglesPage />,
   retries: <RetriesPage />,
   settings: <SettingsPage />,
+  export: <ExportPage />,
 }
 
 export const router = createBrowserRouter(
